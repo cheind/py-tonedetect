@@ -2,7 +2,7 @@
 import numpy as np
 import math
 
-class overlapping_window:
+class Window:
     def __init__(self, size, sample_rate):
         self.size = int(size)
         assert self.size % 2 == 0, "Even window size expected"
@@ -29,7 +29,7 @@ class overlapping_window:
         ws = max(ws_f, ws_r)
         return ws if ws % 2 == 0 else ws + 1
 
-    def update(self, samples, cb):
+    def update(self, samples, cb, *cb_args):
         """ Update by adding new samples. Invokes callback for every full window encountered. """
         nsamples = len(samples)
         idx = 0
@@ -42,7 +42,7 @@ class overlapping_window:
             nsamples -= nconsume
             if (self.idx == self.size):
                 # Invoke callback and shift window
-                cb(self)
+                cb(self, *cb_args)
                 self.samples[:self.half_length] = self.samples[self.half_length:]
                 self.idx = self.half_length
                 self.shifts += 1

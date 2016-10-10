@@ -28,8 +28,9 @@ def write_audio(filename, sample_rate, data):
     scaled = np.int16(data/np.max(np.abs(data)) * 32767)
     scipy.io.wavfile.write(filename, sample_rate, scaled)
 
-def normalize(data, min_value = -1., max_value = 1.):
+def normalize_audio(data, min_value = -1., max_value = 1.):
     """ Normalize audio data """
+    data = np.asarray(data, dtype=np.float32)
     min_data = np.min(data)
     max_data = np.max(data)
     data_std = (data - min_data) / (max_data - min_data)

@@ -1,7 +1,7 @@
 
 import numpy as np
 
-class frequency_detector(object):
+class FrequencyDetector(object):
     """ Detect frequencies in sampled signals."""
 
     def __init__(self, frequencies, amp_threshold=0.1):
@@ -22,7 +22,7 @@ class frequency_detector(object):
         amp = lambda f: y[int(round(self.f2b(fres, f)))]
         return [amp(fb) >= self.threshold for fb in self.frequencies]
     
-class tone_detector(object):
+class ToneDetector(object):
     """ Detect the presence of multiple frequencies in sampled signals."""
 
     def __init__(self, tones, min_presence=0.070, min_pause=0.070):
@@ -71,7 +71,7 @@ class tone_detector(object):
                 
         return new_tones
 
-class tone_sequence_detector(object):
+class ToneSequenceDetector(object):
     def __init__(self, max_tone_interval=1., min_sequence_length=2):
         self.max_tone_interval = max_tone_interval
         self.min_sequence_length = min_sequence_length

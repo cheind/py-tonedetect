@@ -1,7 +1,7 @@
 
 import json
 
-class tones(object):
+class Tones(object):
     """ A list of tones """
 
     def __init__(self):
@@ -20,7 +20,7 @@ class tones(object):
 
     @staticmethod
     def from_json_file(filename):
-        t = tones()
+        t = Tones()
         with open(filename) as f: 
             t.items = json.load(f)
         return t
