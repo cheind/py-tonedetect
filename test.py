@@ -2,26 +2,24 @@
 import helpers
 import window
 import detector
-
-import numpy as np
+import tones
 
 sr, d = helpers.read_audio('etc/radio0.wav')
 n = helpers.normalize(d)
 
-tones = detector.tones()
-tones.add_tone([770, 1209], 4)
-
-freqs = tones.all_tone_frequencies()
+mytones = tones.tones.from_json_file('etc/dtmf.json')
+freqs = mytones.all_tone_frequencies()
 
 ws = window.overlapping_window.estimate_size(sr, freqs, 20)
 wnd = window.overlapping_window(ws, sr)
 
-dt_low = detector.fft_detector(freqs)
-dt_high = detector.tone_detector(tones)
-
+d_f = detector.frequency_detector(freqs)
+d_t = detector.tone_detector(mytones)
+d_s = detector.tone_sequence_detector(max_tone_interval=0.5, min_sequence_length=1)
 
 def cb(w):
-    f = dt_low.detect(w)
-    tones = dt_high.detect(w, f)
-    for t in tones: 
-        print("Found tone {} at {}".format(t, w.temporal_position()))
+    cur_f = d_f.detect(w)
+    cur_t = d_t.detect(w, cur_f)
+    cur_s, start, stop = d_s.detect(w, cur_t)
+    if len(cur_s) > 0:
+        print("Found sequence {} in range {:.2f}-{:.2f}".format(cur_s, start, stop))

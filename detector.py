@@ -1,8 +1,8 @@
 
 import numpy as np
 
-class fft_detector(object):
-    """ Detect frequencies in sampled signals """
+class frequency_detector(object):
+    """ Detect frequencies in sampled signals."""
 
     def __init__(self, frequencies, amp_threshold=0.1):
         self.frequencies = np.atleast_1d(frequencies)
@@ -13,7 +13,7 @@ class fft_detector(object):
         return norm * np.abs(np.fft.fft(wnd.windowing_function * wnd.samples))
 
     def f2b(self, fres, f):
-        """ Frequency to frequency bin conversion """
+        """ Frequency to frequency bin conversion."""
         return f / fres
 
     def detect(self, wnd):
@@ -21,46 +21,31 @@ class fft_detector(object):
         fres = wnd.frequency_resolution
         amp = lambda f: y[int(round(self.f2b(fres, f)))]
         return [amp(fb) >= self.threshold for fb in self.frequencies]
-
-
-class tones(object):
-    """ A list of tones """
-
-    def __init__(self):
-        self.items = []
-
-    def add_tone(self, frequencies, sym=None):
-        sym = sym if sym is not None else len(self.items)
-        self.items.append({'f': frequencies, 'sym': sym})
     
-    def all_tone_frequencies(self):
-        """ Return a list of all frequencies across all tones """        
-        f = []
-        for e in self.items:
-            f.extend(e['f'])
-        return list(set(f))
-    
-
 class tone_detector(object):
-    """ Detect the presence of multiple frequencies in sampled signals """
+    """ Detect the presence of multiple frequencies in sampled signals."""
 
-    def __init__(self, list_of_tones, min_presence_time = 0.070):
-        self.tones = list_of_tones.items
-        self.freqs = list_of_tones.all_tone_frequencies()
+    def __init__(self, tones, min_presence=0.070, min_pause=0.070):
+        self.tones = tones.items
+        self.freqs = tones.all_tone_frequencies()
         self.tone_data = []
         for e in self.tones:
             self.tone_data.append({
                 # The ids of frequencies that need to be present in window
                 'ids': [self.freqs.index(f) for f in e['f']],
-                # Accumulator counting the number of repetetive occurances of tone
-                'acc': 0.,
+                # Accumulator for active tone state
+                'acc_on': 0.,
+                # Accumulator for muted tone state
+                'acc_off': 0.,
                 # Whether or not the tone still present has already been reported before.
                 'reported': False
             })
-        self.min_presence = min_presence_time
+        self.min_presence = min_presence
+        self.min_pause = min_pause
 
 
     def detect(self, wnd, current_frequencies):
+        """ Returns the list of active tones given the state of frequencies currently present in signal."""
         r = current_frequencies
         time_span = wnd.temporal_resolution / 2 # due to overlapping window shifts
         new_tones = []
@@ -69,19 +54,49 @@ class tone_detector(object):
             required_f = [r[id] for id in data['ids']]
 
             if np.all(required_f):
-                data['acc'] =  data['acc'] + time_span
-                if data['acc'] > self.min_presence and not data['reported']:
+                # All required frequencies for this tone are present
+                data['acc_on'] =  data['acc_on'] + time_span
+                if data['acc_on'] > self.min_presence and not data['reported']:
+                    # Even if tone stays active, won't be reported again before at least min_pause time has passed.
                     new_tones.append(self.tones[i]['sym'])
-                    data['reported'] = True
+                    data['reported'] = True 
+                    data['acc_off'] = 0.
             else:
-                data['acc'] = 0.
-                data['reported'] = False
+                # At least one required frequency is not present
+                if data['reported']:
+                    data['acc_off'] =  data['acc_off'] + time_span
+                    if data['acc_off'] > self.min_pause:            
+                        data['reported'] = False
+                        data['acc_on'] = 0.
                 
         return new_tones
 
+class tone_sequence_detector(object):
+    def __init__(self, max_tone_interval=1., min_sequence_length=2):
+        self.max_tone_interval = max_tone_interval
+        self.min_sequence_length = min_sequence_length
+        self.last_tone = 0.
+        self.first_tone = 0.
+        self.sequence = []
 
+    def detect(self, wnd, current_tones):
+        s = []
+        first, last = None, None
 
+        pos = wnd.temporal_position()
+        delta = pos - self.last_tone
+        
+        if delta > self.max_tone_interval:
+            if len(self.sequence) >= self.min_sequence_length:
+                s.extend(self.sequence)
+                first = self.first_tone
+                last = self.last_tone
+                self.sequence.clear()
+        
+        if len(current_tones) > 0:
+            self.first_tone = pos if len(self.sequence) == 0 else self.first_tone
+            self.last_tone = pos
+            self.sequence.extend(current_tones)            
 
-
-
+        return s, first, last
     
