@@ -23,3 +23,6 @@ def cb(w):
     cur_s, start, stop = d_s.detect(w, cur_t)
     if len(cur_s) > 0:
         print("Found sequence {} in range {:.2f}-{:.2f}".format(cur_s, start, stop))
+
+
+# gstreamer pipeline d:\gstreamer\1.0\x86_64\bin\gst-launch-1.0.exe playbin uri=http://mp3stream7.apasf.apa.at:8000/
