@@ -1,7 +1,7 @@
 
 import subprocess as sp
 import numpy as np
-from . import helpers
+from tonedetect import helpers
 
 class FFMPEGSource(object):  # pylint: disable=too-few-public-methods
 
