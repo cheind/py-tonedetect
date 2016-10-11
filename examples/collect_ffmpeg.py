@@ -5,9 +5,9 @@ import numpy as np
 import logging
 
 from tonedetect import detectors
+from tonedetect import helpers
 from tonedetect.tones import Tones
 from tonedetect.window import Window
-from tonedetect.helpers import normalize_audio
 
 
 logging.basicConfig(format='%(asctime)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S', level=logging.INFO)
@@ -33,7 +33,7 @@ def launch_ffmpeg(args):
         '-loglevel', 'panic',
         '-f', 's16le',
         '-acodec', 'pcm_s16le',
-        '-ar', str(args.samplerate), 
+        '-ar', str(args.samplerate),
         '-ac', '1',
         '-'
     ]
@@ -46,16 +46,15 @@ def read_audio_parts(proc, length):
         if not data:
             break
         audio = np.fromstring(data, dtype="int16")
-        audio_n = normalize_audio(audio)
-        yield audio_n
-
+        yield audio
+        
 def on_window_complete(w, d_f, d_t, d_s):
     cur_f = d_f.detect(w)
     cur_t = d_t.detect(w, cur_f)
     cur_s, start, stop = d_s.detect(w, cur_t)
     
     if len(cur_s) > 0:
-        print("Found sequence {} in range {:.2f}-{:.2f}".format(cur_s, start, stop))
+        logging.info("Sequence found! {} at {:.2f}-{:.2f}".format(cur_s, start, stop))
 
 def main():
     
@@ -64,21 +63,24 @@ def main():
     proc = launch_ffmpeg(args)
 
     tones = Tones.from_json_file(args.tones)
-    
     all_freqs = tones.all_tone_frequencies()
-    window_size = Window.estimate_size(args.samplerate, all_freqs, 20)
-    logging.info("Tuning window size to %d", window_size)
+    window_size = Window.estimate_size(args.samplerate, all_freqs, tones.minimum_frequency_step() / 3)
 
     wnd = Window(window_size, args.samplerate)
-    
+    logging.info("Tuning window size to {} samples corresponding to {:.4f} seconds.".format(wnd.size, wnd.temporal_resolution))
+
     d_f = detectors.FrequencyDetector(all_freqs, amp_threshold=0.1)
-    d_t = detectors.ToneDetector(tones, min_presence=0.070, min_pause=0.070)
-    d_s = detectors.ToneSequenceDetector(max_tone_interval=1, min_sequence_length=2)
+    d_t = detectors.ToneDetector(tones, min_presence=0.01, min_pause=0.010)
+    d_s = detectors.ToneSequenceDetector(max_tone_interval=0.1, min_sequence_length=1)
 
     numbered_parts = enumerate(read_audio_parts(proc, args.buffersize))
     for i, part in numbered_parts:
-        wnd.update(part, on_window_complete, d_f, d_t, d_s)
-
+        # Normalize audio
+        audio = helpers.normalize_pcm16(part)
+        wnd.update(audio, on_window_complete, d_f, d_t, d_s)
+        if i > 1000:
+            break
+    
 
 if __name__ == "__main__":
     main()
