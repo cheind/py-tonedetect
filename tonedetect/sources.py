@@ -1,11 +1,12 @@
 
 import subprocess as sp
 import numpy as np
+from . import helpers
 
 class FFMPEGSource(object):  # pylint: disable=too-few-public-methods
 
     @staticmethod
-    def capture_parts(source, ffmpeg_binary="ffmpeg", sample_rate=44100, part_length=1024):
+    def generate_parts(source, ffmpeg_binary="ffmpeg", sample_rate=44100, part_length=1024):
         command = [
             ffmpeg_binary,
             '-i', source,
@@ -24,7 +25,7 @@ class FFMPEGSource(object):  # pylint: disable=too-few-public-methods
             if not data:
                 break
             audio = np.fromstring(data, dtype="int16")
-            yield audio
+            yield helpers.normalize_pcm16(audio)
 
 
 

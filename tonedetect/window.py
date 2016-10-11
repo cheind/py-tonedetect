@@ -29,20 +29,25 @@ class Window:
         ws = max(ws_f, ws_r)
         return ws if ws % 2 == 0 else ws + 1
 
-    def update(self, samples, cb, *cb_args):
+
+    def generate_windows(self, sample_generator):
+        for part in sample_generator:
+            yield from self.populate_window(part)
+
+    def populate_window(self, samples):
         """ Update by adding new samples. Invokes callback for every full window encountered. """
         nsamples = len(samples)
         idx = 0
-        while (nsamples > 0):
+        while nsamples > 0:
             nleft = self.size - self.idx
             nconsume = min(nleft, nsamples)
             self.samples[self.idx : self.idx + nconsume] = samples[idx : idx + nconsume]
             self.idx += nconsume
             idx += nconsume
             nsamples -= nconsume
-            if (self.idx == self.size):
+            if self.idx == self.size:
                 # Invoke callback and shift window
-                cb(self, *cb_args)
+                yield self
                 self.samples[:self.half_length] = self.samples[self.half_length:]
                 self.idx = self.half_length
                 self.shifts += 1

@@ -24,14 +24,6 @@ def parse_args():
     parser.add_argument("--buffersize", help="buffer size for process pipes", type=int, default=1024)
 
     return parser.parse_args()
-        
-def on_window_complete(w, d_f, d_t, d_s):
-    cur_f = d_f.detect(w)
-    cur_t = d_t.detect(w, cur_f)
-    cur_s, start, stop = d_s.detect(w, cur_t)
-    
-    if len(cur_s) > 0:
-        logging.info("Sequence found! {} at {:.2f}-{:.2f}".format(cur_s, start, stop))
 
 def main():
     
@@ -48,16 +40,22 @@ def main():
     d_t = detectors.ToneDetector(tones, min_presence=0.01, min_pause=0.010)
     d_s = detectors.ToneSequenceDetector(max_tone_interval=0.1, min_sequence_length=1)
 
-    gen_parts = sources.FFMPEGSource.capture_parts(
+    gen_parts = sources.FFMPEGSource.generate_parts(
         args.source,
         args.ffmpeg,
         args.samplerate,
         args.buffersize)
 
-    for part in gen_parts:
+    gen_windows = wnd.generate_windows(gen_parts)
+
+    for full_window in gen_windows:
         # Normalize audio
-        audio = helpers.normalize_pcm16(part)
-        wnd.update(audio, on_window_complete, d_f, d_t, d_s)
+        cur_f = d_f.detect(full_window)
+        cur_t = d_t.detect(full_window, cur_f)
+        cur_s, start, stop = d_s.detect(full_window, cur_t)
+    
+        if len(cur_s) > 0:
+            logging.info("Sequence found! {} at {:.2f}-{:.2f}".format(cur_s, start, stop))
     
 
 if __name__ == "__main__":
