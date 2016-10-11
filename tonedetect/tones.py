@@ -1,5 +1,8 @@
 
 import json
+import itertools
+import math
+import numpy as np
 
 class Tones(object):
     """ A list of tones """
@@ -17,6 +20,10 @@ class Tones(object):
         for e in self.items:
             f.extend(e['f'])
         return list(set(f))
+
+    def minimum_frequency_step(self):
+        dists = [math.fabs(pair[0]-pair[1]) for pair in itertools.combinations(self.all_tone_frequencies(), 2)]
+        return np.min(dists)
 
     @staticmethod
     def from_json_file(filename):
