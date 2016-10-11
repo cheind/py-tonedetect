@@ -65,7 +65,7 @@ class ToneDetector(object):
                 # At least one required frequency is not present
                 if data['reported']:
                     data['acc_off'] =  data['acc_off'] + time_span
-                    if data['acc_off'] > self.min_pause:            
+                    if data['acc_off'] > self.min_pause:
                         data['reported'] = False
                         data['acc_on'] = 0.
                 
@@ -89,8 +89,8 @@ class ToneSequenceDetector(object):
         if delta > self.max_tone_interval:
             if len(self.sequence) >= self.min_sequence_length:
                 s.extend(self.sequence)
-                first = self.first_tone
-                last = self.last_tone
+                first = self.first_tone - wnd.temporal_resolution / 2
+                last = self.last_tone + wnd.temporal_resolution / 2
                 self.sequence.clear()
         
         if len(current_tones) > 0:
