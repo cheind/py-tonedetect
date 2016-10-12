@@ -3,17 +3,17 @@ import numpy as np
 import math
 
 class Window:
-    def __init__(self, size, sample_rate):
-        self.size = int(size)
-        assert self.size % 2 == 0, "Even window size expected"
+    def __init__(self, nsamples, sample_rate):
+        self.nsamples = int(nsamples)
+        assert self.nsamples % 2 == 0, "Even window size expected"
         self.sample_rate = sample_rate
-        self.temporal_resolution = self.size / self.sample_rate
-        self.frequency_resolution = self.sample_rate / self.size
-        self.samples = np.zeros(self.size)
+        self.temporal_resolution = self.nsamples / self.sample_rate
+        self.frequency_resolution = self.sample_rate / self.nsamples
+        self.samples = np.zeros(self.nsamples)
         self.shifts = 0
         self.idx = 0
-        self.half_length = int(self.size / 2)
-        self.windowing_function = np.hanning(self.size)
+        self.half_length = int(self.nsamples / 2)
+        self.windowing_function = np.hanning(self.nsamples)
         self.windowing_function_normalizer = 2.0 # Hanning function has average of 0.5
 
     @staticmethod
@@ -39,13 +39,13 @@ class Window:
         nsamples = len(samples)
         idx = 0
         while nsamples > 0:
-            nleft = self.size - self.idx
+            nleft = self.nsamples - self.idx
             nconsume = min(nleft, nsamples)
             self.samples[self.idx : self.idx + nconsume] = samples[idx : idx + nconsume]
             self.idx += nconsume
             idx += nconsume
             nsamples -= nconsume
-            if self.idx == self.size:
+            if self.idx == self.nsamples:
                 # Invoke callback and shift window
                 yield self
                 self.samples[:self.half_length] = self.samples[self.half_length:]

@@ -7,10 +7,12 @@ class FrequencyDetector(object):
     def __init__(self, frequencies, amp_threshold=0.1):
         self.frequencies = np.atleast_1d(frequencies)
         self.threshold = amp_threshold
+        self.fft_data = None
 
     def fft(self, wnd):
-        norm = (2 / wnd.size) * wnd.windowing_function_normalizer
-        return norm * np.abs(np.fft.fft(wnd.windowing_function * wnd.samples))
+        norm = (2 / wnd.nsamples) * wnd.windowing_function_normalizer
+        self.fft_data = norm * np.abs(np.fft.fft(wnd.windowing_function * wnd.samples))
+        return self.fft_data
 
     def f2b(self, fres, f):
         """ Frequency to frequency bin conversion."""
