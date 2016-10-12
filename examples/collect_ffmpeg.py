@@ -49,8 +49,7 @@ def main():
     gen_windows = wnd.generate_windows(gen_parts)
 
     for full_window in gen_windows:
-        # Normalize audio
-        cur_f = d_f.detect(full_window)
+        cur_f = d_f.detect(full_window) 
         cur_t = d_t.detect(full_window, cur_f)
         cur_s, start, stop = d_s.detect(full_window, cur_t)
     
