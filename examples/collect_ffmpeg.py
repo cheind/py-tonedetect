@@ -7,6 +7,7 @@ import logging
 from tonedetect import detectors
 from tonedetect import sources
 from tonedetect import helpers
+from tonedetect import debug
 from tonedetect.tones import Tones
 from tonedetect.window import Window
 
@@ -34,7 +35,7 @@ def main():
     window_size = Window.estimate_size(args.samplerate, all_freqs, tones.minimum_frequency_step() / 3)
 
     wnd = Window(window_size, args.samplerate)
-    logging.info("Tuning window size to {} samples corresponding to {:.4f} seconds.".format(wnd.size, wnd.temporal_resolution))
+    #logging.info("Tuning window size to {} samples corresponding to {:.4f} seconds.".format(wnd.size, wnd.temporal_resolution))
 
     d_f = detectors.FrequencyDetector(all_freqs, amp_threshold=0.1)
     d_t = detectors.ToneDetector(tones, min_presence=0.01, min_pause=0.010)
@@ -50,6 +51,11 @@ def main():
 
     for full_window in gen_windows:
         cur_f = d_f.detect(full_window) 
+        if np.any(cur_f):
+            debug.plot_temporal_domain(wnd.samples)
+            debug.plot_frequency_domain(d_f.fft_data, full_window.sample_rate)
+            debug.plt.xlim([np.min(all_freqs),np.max(all_freqs)])
+            debug.plt.show()
         cur_t = d_t.detect(full_window, cur_f)
         cur_s, start, stop = d_s.detect(full_window, cur_t)
     
