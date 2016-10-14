@@ -48,3 +48,4 @@ Temporary Items
 .vscode
 __pycache__
 .cache/v/cache/lastfailed
+.ipynb_checkpoints
