@@ -1,12 +1,12 @@
 
 import numpy as np
 
-def generate_time_samples(sample_rate, duration, start=0):
+def generate_time_samples(sample_rate, duration, start=0, dtype=None):
     """ Returns time samples for a given duration and sample rate """
-    return np.arange(start, start + duration, 1 / sample_rate)
+    return np.arange(start, start + duration, 1 / sample_rate, dtype)
 
 def generate_signal(sample_rate, duration, frequencies, amplitudes, start=0):
-    """ Encodes a set of frequencies into a time signal """
+    """ Encodes a set of frequencies as sinusoids into a time signal """
     frequencies = np.atleast_1d(frequencies)
     amplitudes = np.atleast_1d(amplitudes)
 
@@ -16,5 +16,5 @@ def generate_signal(sample_rate, duration, frequencies, amplitudes, start=0):
     signal = np.zeros(len(samples))
     for f, a in zip(frequencies, amplitudes):
         signal += a * np.sin(2 * np.pi * f * samples)
-    return signal, samples
+    return signal
     
