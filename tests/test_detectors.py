@@ -12,11 +12,11 @@ def test_frequency_detector():
     amps = [0.5, 1., 2.]
     s = generators.generate_signal(sf, 1, freqs, amps)
 
-    wnd = window.Window(1000, 0, sf, window.WindowingFunction(1000))
+    wnd = window.Window(1000, 0, sf, window.WindowingFunction(1000, 0))
     fd = detectors.FrequencyDetector(freqs[0:2], amp_threshold=0.1)
     
     w = next(wnd.update(s))
-    result = fd.detect(w)
+    result = fd.update(w)
     assert np.all(result)
 
 def test_frequency_detector():
@@ -26,11 +26,11 @@ def test_frequency_detector():
     amps = [0.5, 1., 2.]
     s = generators.generate_signal(sf, 1, freqs, amps)
 
-    wnd = window.Window(1000, 0, sf, window.WindowingFunction(1000, wndtype=window.WindowingFunction.Type.hanning))
+    wnd = window.Window(1000, 0, sf, window.WindowingFunction(1000, 0, wndtype=window.WindowingFunction.Type.hanning))
     fd = detectors.FrequencyDetector(freqs, amp_threshold=0.1)
     
     w = next(wnd.update(s))
-    result = fd.detect(w)
+    result = fd.update(w)
     assert np.all(result)
 
         

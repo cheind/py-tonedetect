@@ -31,33 +31,27 @@ def main():
     args = parse_args()
 
     tones = Tones.from_json_file(args.tones)
-    all_freqs = tones.all_tone_frequencies()
-    window_size = Window.estimate_size(args.samplerate, all_freqs, tones.minimum_frequency_step() / 3)
+    freqs = tones.all_tone_frequencies()
 
-    wnd = Window(window_size, args.samplerate)
-    #logging.info("Tuning window size to {} samples corresponding to {:.4f} seconds.".format(wnd.size, wnd.temporal_resolution))
+    wnd = Window.tuned(args.samplerate, freqs)
 
-    d_f = detectors.FrequencyDetector(all_freqs, amp_threshold=0.1)
-    d_t = detectors.ToneDetector(tones, min_presence=0.01, min_pause=0.010)
-    d_s = detectors.ToneSequenceDetector(max_tone_interval=0.1, min_sequence_length=1)
+    d_f = detectors.FrequencyDetector(freqs, amp_threshold=0.1)
+    d_t = detectors.ToneDetector(tones, min_presence=0.04, min_pause=0.04)
+    d_s = detectors.ToneSequenceDetector(max_tone_interval=1, min_sequence_length=1)
 
     gen_parts = sources.FFMPEGSource.generate_parts(
         args.source,
-        args.ffmpeg,
-        args.samplerate,
-        args.buffersize)
+        ffmpeg_binary=args.ffmpeg,
+        sample_rate=args.samplerate,
+        part_length=args.buffersize,
+        eof_size=44100)
 
-    gen_windows = wnd.generate_windows(gen_parts)
+    gen_windows = wnd.update(gen_parts)
 
     for full_window in gen_windows:
-        cur_f = d_f.detect(full_window) 
-        if np.any(cur_f):
-            debug.plot_temporal_domain(wnd.samples)
-            debug.plot_frequency_domain(d_f.fft_data, full_window.sample_rate)
-            debug.plt.xlim([np.min(all_freqs),np.max(all_freqs)])
-            debug.plt.show()
-        cur_t = d_t.detect(full_window, cur_f)
-        cur_s, start, stop = d_s.detect(full_window, cur_t)
+        cur_f = d_f.update(full_window) 
+        cur_t = d_t.update(full_window, cur_f)
+        cur_s, start, stop = d_s.update(full_window, cur_t)
     
         if len(cur_s) > 0:
             logging.info("Sequence found! {} at {:.2f}-{:.2f}".format(cur_s, start, stop))

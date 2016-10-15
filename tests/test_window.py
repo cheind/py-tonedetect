@@ -48,3 +48,24 @@ def test_window_yields_correctly():
     np.testing.assert_allclose(next(gen).values, [6,7,8,9,0,0])
     with pytest.raises(StopIteration):
         next(gen)
+
+def test_window_tunes_correctly():
+    w = window.Window.tuned(1000, [10], min_fres=10, power_of_2=False, use_padding=False)
+
+    assert w.nsamples == 1000 / 10 # nsamples == fs / fftres
+    assert w.temporal_resolution == 100 / 1000 # T = samples / fs
+    assert w.frequency_resolution == 1000 / 100 # fftres = 1 / T == fs / samples
+    assert w.fft_resolution == 1000 / 100 # Same as above since we don't have any padding
+
+    w = window.Window.tuned(1000, [10, 20], power_of_2=False, use_padding=False)
+    # Min step is 10, according to docs we use 1/2
+    assert w.nsamples == 1000 / (10 / 2) # nsamples == fs / fftres
+    assert w.frequency_resolution == 10 / 2
+
+    w = window.Window.tuned(1000, [10, 20], min_fres=10, power_of_2=True, use_padding=True)
+    assert w.ntotal == 128
+    assert w.nsamples == 1000/10
+    assert w.npads == 28
+    assert w.frequency_resolution == 10 # Only considering data samples
+    assert w.fft_resolution == 1000 / 128
+    assert w.temporal_resolution == 0.1

@@ -17,7 +17,7 @@ class FrequencyDetector(object):
     def f2b(self, fres, f):
         return f / fres
 
-    def detect(self, wnd):
+    def update(self, wnd):
         y = self.fft(wnd)
         amp = lambda f: y[int(round(self.f2b(wnd.fft_resolution, f)))]
         return [amp(fb) >= self.threshold for fb in self.frequencies]
