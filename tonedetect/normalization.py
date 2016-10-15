@@ -15,8 +15,6 @@ def normalize_audio_by_bit_depth(data, dtype='float64'):
 
     i = np.iinfo(data.dtype)
     absolute_max = 2 ** (i.bits - 1)
-    print(i.min)
-    print(i.bits)
     offset = i.min + absolute_max
     return (data.astype(dtype) - offset) / absolute_max
 

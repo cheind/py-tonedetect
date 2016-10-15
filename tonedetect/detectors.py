@@ -7,21 +7,19 @@ class FrequencyDetector(object):
     def __init__(self, frequencies, amp_threshold=0.1):
         self.frequencies = np.atleast_1d(frequencies)
         self.threshold = amp_threshold
-        self.fft_data = None
+        self.fft_values = None
 
     def fft(self, wnd):
-        norm = (2 / wnd.nsamples) * wnd.windowing_function_normalizer
-        self.fft_data = norm * np.abs(np.fft.fft(wnd.windowing_function * wnd.samples))
-        return self.fft_data
+        norm = (2 / wnd.ntotal) * wnd.windowing_function.normalizer
+        self.fft_values = norm * np.abs(np.fft.fft(wnd.windowing_function.values * wnd.values))
+        return self.fft_values
 
     def f2b(self, fres, f):
-        """ Frequency to frequency bin conversion."""
         return f / fres
 
     def detect(self, wnd):
         y = self.fft(wnd)
-        fres = wnd.frequency_resolution
-        amp = lambda f: y[int(round(self.f2b(fres, f)))]
+        amp = lambda f: y[int(round(self.f2b(wnd.fft_resolution, f)))]
         return [amp(fb) >= self.threshold for fb in self.frequencies]
     
 class ToneDetector(object):
@@ -46,7 +44,7 @@ class ToneDetector(object):
         self.min_pause = min_pause
 
 
-    def detect(self, wnd, current_frequencies):
+    def update(self, wnd, current_frequencies):
         """ Returns the list of active tones given the state of frequencies currently present in signal."""
         r = current_frequencies
         time_span = wnd.temporal_resolution / 2 # due to overlapping window shifts
@@ -81,7 +79,7 @@ class ToneSequenceDetector(object):
         self.first_tone = 0.
         self.sequence = []
 
-    def detect(self, wnd, current_tones):
+    def update(self, wnd, current_tones):
         s = []
         first, last = None, None
 
