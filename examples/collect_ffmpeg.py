@@ -3,6 +3,7 @@
 import argparse
 import numpy as np
 import logging
+import itertools
 
 from tonedetect import detectors
 from tonedetect import sources
@@ -33,7 +34,7 @@ def main():
     tones = Tones.from_json_file(args.tones)
     freqs = tones.all_tone_frequencies()
 
-    wnd = Window.tuned(args.samplerate, freqs)
+    wnd = Window.tuned(args.samplerate, freqs, power_of_2=True)
 
     d_f = detectors.FrequencyDetector(freqs, amp_threshold=0.1)
     d_t = detectors.ToneDetector(tones, min_presence=0.04, min_pause=0.04)
@@ -43,13 +44,20 @@ def main():
         args.source,
         ffmpeg_binary=args.ffmpeg,
         sample_rate=args.samplerate,
-        part_length=args.buffersize,
-        eof_size=44100)
+        part_length=args.buffersize)
 
-    gen_windows = wnd.update(gen_parts)
+    # Use the silence source to flush any pending tone detections.
+    gen_silence = sources.SilenceSource.generate_parts(1, args.samplerate)    
+
+    gen_windows = wnd.update(itertools.chain(gen_parts, gen_silence))
 
     for full_window in gen_windows:
         cur_f = d_f.update(full_window) 
+        if np.sum(cur_f) == 2:
+            debug.plot_temporal_domain(full_window.sample_values)
+            debug.plot_frequency_domain(d_f.fft_values, args.samplerate)
+            debug.plt.show()
+
         cur_t = d_t.update(full_window, cur_f)
         cur_s, start, stop = d_s.update(full_window, cur_t)
     
