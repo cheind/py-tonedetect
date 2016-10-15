@@ -14,7 +14,7 @@ class Window:
         self.idx = 0
         self.half_length = int(self.nsamples / 2)
         self.windowing_function = np.hanning(self.nsamples)
-        self.windowing_function_normalizer = 2.0 # Hanning function has average of 0.5
+        self.windowing_function_normalizer = 1. / np.average(self.windowing_function)
 
     @staticmethod
     def estimate_size(sample_rate, frequencies, frequency_resolution = 1000):
