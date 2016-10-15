@@ -16,4 +16,4 @@ def plot_frequency_domain(fft_data, sample_rate, title="Frequencies"):
     plt.title(title)
     plt.xlabel("Frequency ($Hz$)")
     plt.ylabel("Amplitude ($Unit$)")
-    plt.plot(xlabels, fft_data[:nyquist], "r+")
+    plt.plot(xlabels, fft_data[:nyquist], marker='*')
