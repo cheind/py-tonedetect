@@ -57,7 +57,7 @@ def main():
         cur_s, start, stop = d_s.update(full_window, cur_t)
     
         if len(cur_s) > 0:
-            logging.info("Sequence found! {} at {:.2f}-{:.2f}".format(cur_s, start, stop))
+            logger.info("Sequence found! {} at {:.2f}-{:.2f}".format(cur_s, start, stop))
     
 
 if __name__ == "__main__":
