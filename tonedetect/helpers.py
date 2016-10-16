@@ -4,7 +4,7 @@ import scipy.io.wavfile
 def read_audio(filename):
     """ Read audio file """
     sr, d = scipy.io.wavfile.read(filename)
-    return sr, np.asarray(d, dtype=np.float32)
+    return sr, normalize_audio_by_bit_depth(d)
 
 def write_audio(filename, sample_rate, data):
     """ Write audio file """
