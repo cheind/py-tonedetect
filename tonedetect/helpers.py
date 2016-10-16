@@ -11,15 +11,38 @@ def write_audio(filename, sample_rate, data):
     scaled = np.int16(data/np.max(np.abs(data)) * 32767)
     scipy.io.wavfile.write(filename, sample_rate, scaled)
 
-def normalize(data, min_value = -1., max_value = 1.):
-    """ Normalize audio data """
-    data = np.asarray(data, dtype=np.float32)
+def normalize_audio_by_bit_depth(data, dtype='float64'):
+    """Convert integral signal to [-1., 1.] using bit depth range of input type."""
+
+    data = np.asarray(data)
+    if data.dtype.kind not in 'iu':
+        raise TypeError("Data needs to be integral type")
+
+    dtype = np.dtype(dtype)
+    if dtype.kind != 'f':
+        raise TypeError("Destination type needs to be floating point type")
+
+    i = np.iinfo(data.dtype)
+    absolute_max = 2 ** (i.bits - 1)
+    offset = i.min + absolute_max
+    return (data.astype(dtype) - offset) / absolute_max
+
+def normalize_audio_by_value_range(data, dtype='float64'):
+    """Convert integral or floating point signal to floating point with a range from -1 to 1."""
+
+    data = np.asarray(data)
+    if data.dtype.kind not in 'iuf':
+        raise TypeError("Data needs to be either integral or floating type")
+
+    dtype = np.dtype(dtype)
+    if dtype.kind != 'f':
+        raise TypeError("Destination type needs to be floating point type")
+
+    data = data.astype(dtype)
     min_data = np.min(data)
     max_data = np.max(data)
     data_std = (data - min_data) / (max_data - min_data)
-    data_scaled = data_std * (max_value - min_value) + min_value
-    return data_scaled
 
-def normalize_pcm16(data):
-    range = 2**(data.itemsize*8)
-    return data / range    
+    new_max_value = 1.
+    new_min_value = -1.
+    return data_std * (new_max_value - new_min_value) + new_min_value
