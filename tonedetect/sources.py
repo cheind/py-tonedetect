@@ -3,6 +3,7 @@ import subprocess as sp
 import numpy as np
 from tonedetect import helpers
 
+
 class FFMPEGSource(object):  # pylint: disable=too-few-public-methods
 
     @staticmethod
@@ -25,8 +26,8 @@ class FFMPEGSource(object):  # pylint: disable=too-few-public-methods
             if not data:
                 break
             audio = np.fromstring(data, dtype="int16")
-            yield helpers.normalize_pcm16(audio)
-
+            yield helpers.normalize_audio_by_bit_depth(audio)
+            
 class SilenceSource(object):
     
     @staticmethod
