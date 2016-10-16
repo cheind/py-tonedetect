@@ -18,8 +18,6 @@ def main():
     plt.plot(t, s)
 
     # FFT part
-
-
     N = int(len(s) / 2)
     hann = np.hanning(len(s))
     norm = (4. / len(s)) # Normalization of amplitude using Hanning window
