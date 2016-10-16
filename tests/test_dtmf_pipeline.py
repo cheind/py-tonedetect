@@ -1,6 +1,7 @@
 import os 
 import re
 import itertools
+import numpy as np
 from tonedetect.tones import Tones
 from tonedetect.window import Window
 from tonedetect import helpers
@@ -47,7 +48,9 @@ def run(sample_rate, data, expected_string, min_expected_detections):
     print("Success {} found. Took {} sub-part detections".format(expected_string, num_detections))
     assert num_detections >= min_expected_detections
 
-def test_dtmf_pipeline(): 
+def run_with_noiselevel(noise_std):
+    print("Running DTMF tests with noise level {:.2f}".format(noise_std))
+    print("*"*20)
     rf = r'([0-9A-DspPd]+)\.wav'
     for dirname, dirnames, filenames in os.walk(TEST_SAMPLE_DIR):
         for filename in filenames:
@@ -60,9 +63,15 @@ def test_dtmf_pipeline():
                 expected = expected.replace('P', '') # Long pause
                 expected = expected.replace('d', '') # Short pause     
                 sr, data = helpers.read_audio(path)
+                noise = np.zeros(len(data)) if noise_std == 0. else np.random.normal(0., noise_std, len(data))
+                data += noise
                 print("Testing file {}".format(path))
                 run(sr, data, expected, 1)
             else:
                 print("Skipping file {}".format(path))
 
+
+def test_dtmf_pipeline():     
+    run_with_noiselevel(0.)
+    run_with_noiselevel(0.1)
     
