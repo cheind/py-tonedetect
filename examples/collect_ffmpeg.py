@@ -36,8 +36,8 @@ def main():
 
     wnd = Window.tuned(args.samplerate, freqs, power_of_2=True)
 
-    d_f = detectors.FrequencyDetector(freqs, amp_threshold=0.1)
-    d_t = detectors.ToneDetector(tones, min_presence=0.04, min_pause=0.04)
+    d_f = detectors.FrequencyDetector(freqs)
+    d_t = detectors.ToneDetector(tones, min_tone_amp=0.1, max_inter_tone_amp=0.1, min_presence=0.04, min_pause=0.04)
     d_s = detectors.ToneSequenceDetector(max_tone_interval=1, min_sequence_length=1)
 
     gen_parts = sources.FFMPEGSource.generate_parts(
@@ -54,6 +54,8 @@ def main():
     for full_window in gen_windows:
         cur_f = d_f.update(full_window) 
         cur_t = d_t.update(full_window, cur_f)
+        if len(cur_t) > 1:
+            print(cur_t)
         cur_s, start, stop = d_s.update(full_window, cur_t)
     
         if len(cur_s) > 0:

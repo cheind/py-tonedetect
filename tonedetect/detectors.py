@@ -5,9 +5,8 @@ from sys import float_info
 class FrequencyDetector(object):
     """ Detect frequencies in sampled signals."""
 
-    def __init__(self, frequencies, amp_threshold=0.1):
-        self.frequencies = np.atleast_1d(frequencies)
-        self.threshold = amp_threshold
+    def __init__(self, freqs):
+        self.frequencies = np.atleast_1d(freqs)
         self.fft_values = None
 
     def fft(self, wnd):
@@ -21,7 +20,8 @@ class FrequencyDetector(object):
     def update(self, wnd):
         y = self.fft(wnd)
         amp = lambda f: y[int(round(self.f2b(wnd.fft_resolution, f)))]
-        return [amp(fb) >= self.threshold for fb in self.frequencies]
+        amps = [amp(fb) for fb in self.frequencies]
+        return amps
 
 
 class TimepointAccumulator:
@@ -61,11 +61,13 @@ class TimepointAccumulator:
 class ToneDetector:
     """ Detect the presence of multiple frequencies in sampled signals."""        
 
-    def __init__(self, tones, min_presence=0.070, min_pause=0.070):
+    def __init__(self, tones, min_tone_amp=0.1, max_inter_tone_amp=0.1, min_presence=0.070, min_pause=0.070):
         self.tones = tones.items
         self.freqs = tones.all_tone_frequencies()
         self.min_presence = min_presence
         self.min_pause = min_pause
+        self.min_tone_amp = min_tone_amp
+        self.max_inter_tone_amp = max_inter_tone_amp
         self.tone_data = []
         for e in self.tones:
             self.tone_data.append({
@@ -80,9 +82,8 @@ class ToneDetector:
             })
 
 
-    def update(self, wnd, current_frequencies):
-        """ Returns the list of active tones given the state of frequencies currently present in signal."""
-        r = current_frequencies
+    def update(self, wnd, amps):
+        """ Returns the list of active tones given the state of frequencies currently present in signal."""        
         tpoints = wnd.temporal_range
         new_tones = []
         for i in range(len(self.tones)):
@@ -91,8 +92,11 @@ class ToneDetector:
             acc_off = data['off']
             reported = data['reported']
             
-            required_f = [r[id] for id in data['ids']]
-            if np.all(required_f):
+            tone_amps = [amps[id] for id in data['ids']]
+            tone_amp_active = [a >= self.min_tone_amp for a in tone_amps]
+            tone_amp_range = abs(np.max(tone_amps) - np.min(tone_amps))
+            if np.all(tone_amp_active) and tone_amp_range <= self.max_inter_tone_amp:
+                #print("{} - {}".format([amps[id] for id in data['ids']], self.tones[i]['sym']))
                 # All required frequencies for this tone are present
                 acc_on.union(tpoints)
                 if acc_on.timespan >= self.min_presence and not reported:
