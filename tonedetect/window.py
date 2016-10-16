@@ -112,16 +112,18 @@ class Window:
                 self.idx = self.nsamples_half
                 self.shifts += 1
 
-    def temporal_position(self):
+    @property
+    def temporal_center(self):
         """ Returns the position of the window in the data stream.
             Position is specified as window's center position.
         """
         half_res = self.temporal_resolution / 2
         return half_res + self.shifts * half_res
 
-    def temporal_span(self):
-        """Returns the temporal span of this window."""
-        pos = self.temporal_position()
+    @property
+    def temporal_range(self):
+        """Returns the temporal span of this window in terms of two timepoints."""
+        pos = self.temporal_center
         half_res = self.temporal_resolution / 2
         return [pos - half_res, pos + half_res]
         

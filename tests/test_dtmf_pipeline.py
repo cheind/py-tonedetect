@@ -5,6 +5,7 @@ import numpy as np
 from tonedetect.tones import Tones
 from tonedetect.window import Window
 from tonedetect import helpers
+from tonedetect import debug
 from tonedetect import sources
 from tonedetect import detectors
 
@@ -38,6 +39,7 @@ def run(sample_rate, data, expected_string, min_expected_detections):
         cur_f = d_f.update(full_window) 
         cur_t = d_t.update(full_window, cur_f)
         cur_s, start, stop = d_s.update(full_window, cur_t)
+
         if len(cur_s) > 0:
             num_detections += 1
             detect_str = "".join([str(e) for e in cur_s])
@@ -45,13 +47,22 @@ def run(sample_rate, data, expected_string, min_expected_detections):
             assert detect_str == compare_str
             expected_left = expected_left[len(detect_str):]
     
-    print("Success {} found. Took {} sub-part detections".format(expected_string, num_detections))
+    assert len(expected_left) == 0, "The following trailing tones were not recognized {}".format(expected_left)
     assert num_detections >= min_expected_detections
+    print("Success {} found. Took {} sub-part detections".format(expected_string, num_detections))    
+
+def run_with_filename(path, expected, noise_std=0.):
+    sr, data = helpers.read_audio(path)
+    noise = np.zeros(len(data)) if noise_std == 0. else np.random.normal(0., noise_std, len(data))
+    data += noise
+    print("Testing file {}".format(path))
+    run(sr, data, expected, 1)
+
 
 def run_with_noiselevel(noise_std):
     print("Running DTMF tests with noise level {:.2f}".format(noise_std))
     print("*"*20)
-    rf = r'([0-9A-DspPd]+)\.wav'
+    rf = r'^([0-9A-DspPd]+).*\.wav'
     for dirname, dirnames, filenames in os.walk(TEST_SAMPLE_DIR):
         for filename in filenames:
             path = os.path.join(dirname, filename) 
@@ -62,11 +73,7 @@ def run_with_noiselevel(noise_std):
                 expected = expected.replace('s', '*') # Star
                 expected = expected.replace('P', '') # Long pause
                 expected = expected.replace('d', '') # Short pause     
-                sr, data = helpers.read_audio(path)
-                noise = np.zeros(len(data)) if noise_std == 0. else np.random.normal(0., noise_std, len(data))
-                data += noise
-                print("Testing file {}".format(path))
-                run(sr, data, expected, 1)
+                run_with_filename(path, expected, noise_std=noise_std)                
             else:
                 print("Skipping file {}".format(path))
 
