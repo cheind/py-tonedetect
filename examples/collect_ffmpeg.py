@@ -4,6 +4,8 @@ import argparse
 import numpy as np
 import logging
 import itertools
+from datetime import datetime
+import threading
 
 from tonedetect import detectors
 from tonedetect import sources
@@ -11,6 +13,7 @@ from tonedetect import helpers
 from tonedetect import debug
 from tonedetect.tones import Tones
 from tonedetect.window import Window
+
 
 
 logging.basicConfig(format='%(asctime)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S', level=logging.INFO)
@@ -26,6 +29,70 @@ def parse_args():
     parser.add_argument("--buffersize", help="buffer size for process pipes", type=int, default=1024)
 
     return parser.parse_args()
+
+def pretty_size(num, suffix='Bytes'):
+    for unit in ['','Ki','Mi','Gi','Ti','Pi','Ei','Zi']:
+        if abs(num) < 1024.0:
+            return "%3.1f%s%s" % (num, unit, suffix)
+        num /= 1024.0
+    return "%.1f%s%s" % (num, 'Yi', suffix)
+
+def pretty_date(time=False, suffix="ago"):
+    """
+    Get a datetime object or a int() Epoch timestamp and return a
+    pretty string like 'an hour ago', 'Yesterday', '3 months ago',
+    'just now', etc
+    """
+    from datetime import datetime
+    now = datetime.now()
+    if type(time) is int:
+        diff = now - datetime.fromtimestamp(time)
+    elif isinstance(time,datetime):
+        diff = now - time
+    elif not time:
+        diff = now - now
+    second_diff = diff.seconds
+    day_diff = diff.days
+
+    if day_diff < 0:
+        return ''
+
+    if day_diff == 0:
+        if second_diff < 10:
+            return "just now"
+        if second_diff < 60:
+            return str(second_diff) + " seconds" + suffix
+        if second_diff < 120:
+            return "a minute"
+        if second_diff < 3600:
+            return str(second_diff / 60) + " minutes" + suffix
+        if second_diff < 7200:
+            return "an hour"
+        if second_diff < 86400:
+            return str(second_diff / 3600) + " hours" + suffix
+    if day_diff == 1:
+        return "Yesterday"
+    if day_diff < 7:
+        return str(day_diff) + " days" + suffix
+    if day_diff < 31:
+        return str(day_diff / 7) + " weeks" + suffix
+    if day_diff < 365:
+        return str(day_diff / 30) + " months" + suffix
+    return str(day_diff / 365) + " years" + suffix
+
+
+
+status = {
+    'sequences': [],
+    'since': datetime.now(),
+    'update': datetime.now()
+}
+
+def print_status():
+    logger.info("Status: found {} sequences, running since: {}, last updated: {}".format(len(status['sequences']), pretty_date(status['since'], suffix=""), pretty_date(status['update'])))
+    t = threading.Timer(5, print_status)
+    t.daemon = True
+    t.start()
 
 def main():
     
@@ -48,18 +115,19 @@ def main():
 
     # Use the silence source to flush any pending tone detections.
     gen_silence = sources.SilenceSource.generate_parts(1, args.samplerate)    
-
     gen_windows = wnd.update(itertools.chain(gen_parts, gen_silence))
 
+    print_status()
     for full_window in gen_windows:
         cur_f = d_f.update(full_window) 
         cur_t = d_t.update(full_window, cur_f)
-        if len(cur_t) > 1:
-            print(cur_t)
         cur_s, start, stop = d_s.update(full_window, cur_t)
     
         if len(cur_s) > 0:
-            logger.info("Sequence found! {} at {:.2f}-{:.2f}".format(cur_s, start, stop))
+            logger.info("Sequence found! {} around {:.2f}-{:.2f}".format(cur_s, start, stop))
+            status['sequences'].append(cur_s)
+
+        status['update'] = datetime.now()
     
 
 if __name__ == "__main__":
