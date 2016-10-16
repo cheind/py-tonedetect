@@ -65,11 +65,11 @@ def pretty_date(time=False, suffix="ago"):
         if second_diff < 120:
             return "a minute"
         if second_diff < 3600:
-            return str(second_diff / 60) + " minutes" + suffix
+            return "{:.2f} minutes".format(second_diff / 60) + suffix
         if second_diff < 7200:
             return "an hour"
         if second_diff < 86400:
-            return str(second_diff / 3600) + " hours" + suffix
+            return "{:.2f} hours".format(second_diff / 3600) + suffix
     if day_diff == 1:
         return "Yesterday"
     if day_diff < 7:
@@ -90,7 +90,7 @@ status = {
 
 def print_status():
     logger.info("Status: found {} sequences, running since: {}, last updated: {}".format(len(status['sequences']), pretty_date(status['since'], suffix=""), pretty_date(status['update'])))
-    t = threading.Timer(5, print_status)
+    t = threading.Timer(10, print_status)
     t.daemon = True
     t.start()
 
