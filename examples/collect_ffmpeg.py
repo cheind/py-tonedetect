@@ -53,11 +53,6 @@ def main():
 
     for full_window in gen_windows:
         cur_f = d_f.update(full_window) 
-        if np.sum(cur_f) == 2:
-            debug.plot_temporal_domain(full_window.sample_values)
-            debug.plot_frequency_domain(d_f.fft_values, args.samplerate)
-            debug.plt.show()
-
         cur_t = d_t.update(full_window, cur_f)
         cur_s, start, stop = d_s.update(full_window, cur_t)
     
