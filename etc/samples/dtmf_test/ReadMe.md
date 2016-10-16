@@ -8,5 +8,6 @@ This directory contains wav files to be used in conjunction with the `test_dtmf_
 |p|Hash `#`|
 |P|Long pause of 1sec, ignored in detection|
 |d|Short pause of 100ms, ignored in detection|
+|--|Everythin after -- is ignored in detection|
 
 Most of the tones found in this directory are generated using 
