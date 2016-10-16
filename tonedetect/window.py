@@ -53,7 +53,7 @@ class Window:
         high_f = np.max(freqs)
         assert (sample_rate / 2) >= high_f, "Highest target frequency violates Nyquist sampling theorem."
         
-        logger.info("Tuning window size for frequencies {} in Hz".format(freqs))
+        logger.info("Tuning window size for frequencies {}".format(", ".join([str(e) for e in freqs])))
 
         if min_fres is None:            
             if len(freqs) > 1:
@@ -62,15 +62,14 @@ class Window:
                 min_fres = np.min(dists) / 2 # Should give us 2 bins between target frequencies.
             else:
                 min_fres = freqs[0] / 5 # For a single frequency we just use a fifth for spacing.
-            logger.info("Minimum frequency resolution not specified. Auto tuned to {:.2f}Hz".format(min_fres))
+            logger.info("Minimum frequency resolution not specified. Set to {:.2f}Hz".format(min_fres))
         else:
             logger.info("Minimum frequency resolution given {:.2f}Hz".format(min_fres))
 
         # From f_res = 1 / T = fs / ws we can compute the required number of samples as        
         nsamples = int(math.ceil(sample_rate / min_fres))
         nsamples += nsamples % 2 
-        logger.info("Minimum required number of samples {}".format(nsamples))
-
+        
         ntotal = nsamples
         if power_of_2:
             # Find next power of 2
@@ -82,8 +81,7 @@ class Window:
         else:
             nsamples = ntotal
 
-        logger.info("Total number of data samples required {}, corresponding to capture time of {:.5f}s".format(nsamples, nsamples / sample_rate))   
-        
+        logger.info("Window tuned. Length {} ({} data, {} padding). Capture time of {:.5f}s".format(ntotal, nsamples, npad, nsamples / sample_rate))                   
         return Window(nsamples, npad, sample_rate)
 
 
