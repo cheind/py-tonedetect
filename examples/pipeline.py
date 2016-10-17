@@ -4,12 +4,9 @@ import logging
 import itertools
 
 from tonedetect import detectors
-from tonedetect import sources
+from tonedetect.sources import SilenceSource
 from tonedetect.tones import Tones
 from tonedetect.window import Window
-
-logger = logging.getLogger(__name__)
-
 
 class DefaultDetectionPipeline:
 
@@ -24,7 +21,7 @@ class DefaultDetectionPipeline:
         self.d_s = detectors.ToneSequenceDetector(max_tone_interval=1, min_sequence_length=1)
 
         self.gen_parts = gen_parts
-        self.gen_silence = sources.SilenceSource.generate_parts(1, sample_rate)
+        self.gen_silence = SilenceSource.generate_parts(1, sample_rate)
         self.gen_windows = self.wnd.update(itertools.chain(self.gen_parts, self.gen_silence))
 
     def read(self):
