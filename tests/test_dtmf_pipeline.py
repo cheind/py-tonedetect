@@ -71,8 +71,8 @@ def run_with_noiselevel(noise_std):
                 expected = m.group(1)
                 expected = expected.replace('p', '#') # Hash
                 expected = expected.replace('s', '*') # Star
-                expected = expected.replace('P', '') # Long pause
-                expected = expected.replace('d', '') # Short pause     
+                expected = expected.replace('P', '') # Long pause, ignored
+                expected = expected.replace('d', '') # Short pause, ignored
                 run_with_filename(path, expected, noise_std=noise_std)                
             else:
                 print("Skipping file {}".format(path))
