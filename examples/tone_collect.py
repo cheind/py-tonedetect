@@ -35,6 +35,7 @@ def parse_args():
     parser_ffmpeg.add_argument("--source", help="The audio input. Can be a local file path or remote stream address.", required=True)
 
     parser_stdin = subparsers.add_parser("stdin", help="Tone collecting from standard input")
+    parser_stdin.add_argument("--source-type", help="How binary data from stdin is interpreted", default="int16")
     add_common_args(parser_stdin)  
 
     args = parser.parse_args()
@@ -75,8 +76,12 @@ def main():
     
     # Setup input source
     source = None
-    if args.subparser_name == 'ffmpeg':
-        source = sources.FFMPEGSource(args.source, args.ffmpeg, args.sample_rate)    
+    if args.subparser_name == "ffmpeg":
+        logger.info("Initializing FFMPEG source")
+        source = sources.FFMPEGSource(args.source, ffmpeg=args.ffmpeg, sample_rate=args.sample_rate)
+    elif args.subparser_name == "stdin":
+        logger.info("Initializing STDIN source")
+        source = sources.STDINSource(sample_rate=args.sample_rate, source_type=args.source_type)
 
     pipeline = DefaultDetectionPipeline(
         source, tones, 

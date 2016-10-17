@@ -69,13 +69,17 @@ class InMemorySource(BaseSource):
         self.bytes_processed += self.data.nbytes
         yield self.data
 
-class STDINSource():    
+class STDINSource(BaseSource):
 
-    @staticmethod
-    def generate_parts(part_length=1024, stype="int16"):
+    def __init__(self, sample_rate=44100, chunk_size=1024, source_type="int16"):
+        super().__init__(sample_rate)
+        self.chunk_size = chunk_size
+        self.source_type = source_type
+
+    def generate_parts(self):
         while True:
-            data = stdin.read(part_length)
+            data = stdin.buffer.read(self.chunk_size)
             if not data:
                 break
-            audio = np.fromstring(data, stype)
+            audio = np.fromstring(data, self.source_type)
             yield helpers.normalize_audio_by_bit_depth(audio)
