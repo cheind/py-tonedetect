@@ -13,13 +13,6 @@ PROJ_PATH = os.path.abspath(os.path.join(os.path.dirname(os.path.realpath(__file
 TEST_SAMPLE_DIR = os.path.join(PROJ_PATH, "etc", "samples", "dtmf_test")
 DTMF_TONES = Tones.from_json_file(os.path.join(PROJ_PATH, "etc", "dtmf.json"))
 
-class InMemorySource(object):
-
-    @staticmethod
-    def generate_parts(data):
-        yield data
-
-
 def run(sample_rate, data, expected_string, min_expected_detections):
     freqs = DTMF_TONES.all_tone_frequencies()
 
@@ -29,9 +22,9 @@ def run(sample_rate, data, expected_string, min_expected_detections):
     d_t = detectors.ToneDetector(DTMF_TONES, min_tone_amp=0.1, max_inter_tone_amp=0.1, min_presence=0.04, min_pause=0.04)
     d_s = detectors.ToneSequenceDetector(max_tone_interval=1, min_sequence_length=1)
 
-    gen_parts = InMemorySource.generate_parts(data)
-    gen_silence = sources.SilenceSource.generate_parts(1, sample_rate)
-    gen_windows = wnd.update(itertools.chain(gen_parts, gen_silence))
+    source_data = sources.InMemorySource(data, sample_rate) 
+    source_silence = sources.SilenceSource(1, sample_rate)
+    gen_windows = wnd.update(itertools.chain(source_data.generate_parts(), source_silence.generate_parts()))
 
     num_detections = 0
     expected_left = expected_string
