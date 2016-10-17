@@ -4,12 +4,14 @@ import argparse
 import logging
 import threading
 import sys
+import itertools
+from datetime import datetime
 
-from examples.pipeline import DefaultDetectionPipeline
 from tonedetect import helpers
 from tonedetect.tones import Tones
-from tonedetect import sources
-from datetime import datetime
+from tonedetect.sources import FFMPEGSource, STDINSource, SilenceSource
+from tonedetect.window import Window
+from tonedetect.detectors import FrequencyDetector, ToneDetector, ToneSequenceDetector
 
 logging.basicConfig(format="%(asctime)s %(message)s", datefmt="%m/%d/%Y %I:%M:%S", level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -73,35 +75,53 @@ def main():
     # Load tones description    
     logger.info("Loading tone description from '{}'".format(args.tones))
     tones = Tones.from_json_file(args.tones)
+    freqs = tones.all_tone_frequencies()
     
     # Setup input source
-    source = None
+    data_source = None
     if args.subparser_name == "ffmpeg":
         logger.info("Initializing FFMPEG source")
-        source = sources.FFMPEGSource(args.source, ffmpeg=args.ffmpeg, sample_rate=args.sample_rate)
+        data_source = FFMPEGSource(args.source, ffmpeg_binary=args.ffmpeg, sample_rate=args.sample_rate)
     elif args.subparser_name == "stdin":
         logger.info("Initializing STDIN source")
-        source = sources.STDINSource(sample_rate=args.sample_rate, source_type=args.source_type)
+        data_source = STDINSource(sample_rate=args.sample_rate, source_type=args.source_type)
 
-    pipeline = DefaultDetectionPipeline(
-        source, tones, 
-        min_tone_amp=args.min_tone_level,
-        max_inter_tone_amp=args.max_tone_range,
-        min_presence=args.min_tone_on,
-        min_pause=args.min_tone_off,
-        max_tone_interval=args.max_tone_interval,
+    # Setup silence source
+    silence_source = SilenceSource(args.max_tone_interval*2, args.sample_rate)
+
+    # Setup overlapping data window
+    wnd = Window.tuned(args.sample_rate, freqs, power_of_2=True)
+    
+    d_f = FrequencyDetector(freqs)
+    
+    d_t = ToneDetector(
+        tones, 
+        min_tone_amp=args.min_tone_level, 
+        max_inter_tone_amp=args.max_tone_range, 
+        min_presence=args.min_tone_on, 
+        min_pause=args.min_tone_off
+    )
+
+    d_s = ToneSequenceDetector(
+        max_tone_interval=args.max_tone_interval, 
         min_sequence_length=args.min_seq_length
     )
+
+    data_gen = itertools.chain(data_source.generate_parts(), silence_source.generate_parts())
     
     periodic_status()
-    for w in pipeline.read():
-        seq, start, stop = pipeline.detect(w)
-        if len(seq) > 0:
-            logger.info(">>> {} around {:.2f}-{:.2f}".format("".join([str(e) for e in seq]), start, stop))
-            status['sequences'].append(seq)
+    for chunk in data_gen:
+        for w in wnd.update(chunk):
+            cur_freqs = d_f.update(w) 
+            cur_tones = d_t.update(w, cur_freqs)
+            seq, start, stop = d_s.update(w, cur_tones)
 
+            if len(seq) > 0:
+                logger.info(">>> {} around {:.2f}-{:.2f}".format("".join([str(e) for e in seq]), start, stop))
+                status['sequences'].append(seq)
+    
         status['update'] = datetime.now()
-        status['bytes'] = source.bytes_processed
+        status['bytes'] = data_source.bytes_processed
     
 
 if __name__ == "__main__":
