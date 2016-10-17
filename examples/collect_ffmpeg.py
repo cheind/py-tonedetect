@@ -23,16 +23,23 @@ def parse_args():
 
     return parser.parse_args()
 
-
-
 status = {
     'sequences': [],
     'since': datetime.now(),
-    'update': datetime.now()
+    'update': datetime.now(),
+    'bytes': 0
 }
 
 def print_status():
-    logger.info("Status: found {} sequences, running since: {}, last updated: {}".format(len(status['sequences']), helpers.pretty_date(status['since'], suffix=""), helpers.pretty_date(status['update'])))
+    logger.info(
+        "Status {} sequences, running since: {}, last updated: {}, bytes processed: {}"
+        .format(
+            len(status['sequences']), 
+            helpers.pretty_date(status['since'], suffix=""), 
+            helpers.pretty_date(status['update']),
+            helpers.pretty_size(status['bytes'])
+        )
+    )
     t = threading.Timer(10, print_status)
     t.daemon = True
     t.start()
@@ -41,10 +48,10 @@ def main():
     
     args = parse_args()
     tones = Tones.from_json_file(args.tones)
-    
-    gen_parts = sources.FFMPEGSource.generate_parts(
+
+    source = sources.FFMPEGSource(args.ffmpeg)    
+    gen_parts = source.generate_parts(
         args.source,
-        ffmpeg_binary=args.ffmpeg,
         sample_rate=args.samplerate,
         part_length=args.buffersize)
 
@@ -53,12 +60,12 @@ def main():
     print_status()
     for w in pipeline.read():
         seq, start, stop = pipeline.detect(w)
-
         if len(seq) > 0:
             logger.info("Sequence found! {} around {:.2f}-{:.2f}".format(seq, start, stop))
             status['sequences'].append(seq)
 
         status['update'] = datetime.now()
+        status['bytes'] = source.bytes_processed
     
 
 if __name__ == "__main__":

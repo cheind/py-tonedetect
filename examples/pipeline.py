@@ -20,9 +20,9 @@ class DefaultDetectionPipeline:
         self.d_t = detectors.ToneDetector(tones, min_tone_amp=0.1, max_inter_tone_amp=0.1, min_presence=0.04, min_pause=0.04)
         self.d_s = detectors.ToneSequenceDetector(max_tone_interval=1, min_sequence_length=1)
 
-        self.gen_parts = gen_parts
-        self.gen_silence = SilenceSource.generate_parts(1, sample_rate)
-        self.gen_windows = self.wnd.update(itertools.chain(self.gen_parts, self.gen_silence))
+        silence = SilenceSource()
+        gen_silence = silence.generate_parts(1, sample_rate)
+        self.gen_windows = self.wnd.update(itertools.chain(gen_parts, gen_silence))
 
     def read(self):
         yield from self.gen_windows
