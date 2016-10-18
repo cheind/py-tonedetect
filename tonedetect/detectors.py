@@ -134,8 +134,10 @@ class ToneSequenceDetector(object):
             if len(self.sequence) >= self.min_sequence_length:
                 s.extend(self.sequence)
                 first, last = self.acc.range                            
-                self.sequence.clear()
-                self.acc.reset()
+                
+            # In any case we need to clear sequences and reset accumulator.
+            self.sequence.clear()
+            self.acc.reset()
         
         if len(current_tones) > 0:
             self.acc.union(wnd.temporal_range)
