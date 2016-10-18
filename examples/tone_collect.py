@@ -30,7 +30,7 @@ def parse_args():
         parser.add_argument("--min-seq-length", type=int, help="Minimum length or tone sequences to be recognized", default=2)
         parser.add_argument("--capture-audio", help="When a sequence is detected and this switch is enabled, recently captured audio samples are written to disk", action="store_true")
         parser.add_argument("--capture-audio-dir", help="Specifies the directory to write audio captures to",  default=".")
-        parser.add_argument("--capture-audio-length", help="Capture audio buffer size in seconds",  default=10)
+        parser.add_argument("--capture-audio-length", type=int, help="Capture audio buffer size in seconds",  default=10)
 
     parser = argparse.ArgumentParser(prog="tone_collect")
     subparsers = parser.add_subparsers(help="sub-command help", dest="subparser_name")
