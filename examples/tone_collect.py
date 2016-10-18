@@ -2,11 +2,10 @@
 
 import argparse
 import logging
-import threading
 import sys
 import itertools
-from datetime import datetime
 
+from examples.status import StatusPrinter, Status
 from tonedetect import helpers
 from tonedetect.tones import Tones
 from tonedetect.sources import FFMPEGSource, STDINSource, SilenceSource
@@ -47,26 +46,6 @@ def parse_args():
         sys.exit(1)
     return args
         
-status = {
-    'sequences': [],
-    'since': datetime.now(),
-    'update': datetime.now(),
-    'bytes': 0
-}
-
-def periodic_status():
-    logger.info(
-        "Status {} sequences, running since: {}, last updated: {}, bytes processed: {}"
-        .format(
-            len(status['sequences']), 
-            helpers.pretty_date(status['since'], suffix=""), 
-            helpers.pretty_date(status['update']),
-            helpers.pretty_size(status['bytes'])
-        )
-    )
-    t = threading.Timer(10, periodic_status)
-    t.daemon = True
-    t.start()
 
 def main():
     
@@ -86,14 +65,20 @@ def main():
         logger.info("Initializing STDIN source")
         data_source = STDINSource(sample_rate=args.sample_rate, source_type=args.source_type)
 
-    # Setup silence source
+    # Setup silence source. The silence source helps to flush detector states when the actual data stream becomes EOF.
+    # This usually happens with file based data. Using the silence helps to detect sequences that aren't complete at EOF.
     silence_source = SilenceSource(args.max_tone_interval*2, args.sample_rate)
+
+    # The data generator will be concatenation of data and silence. 
+    data_gen = itertools.chain(data_source.generate_parts(), silence_source.generate_parts())
 
     # Setup overlapping data window
     wnd = Window.tuned(args.sample_rate, freqs, power_of_2=True)
     
+    # Setup frequency detection for target frequencies
     d_f = FrequencyDetector(freqs)
     
+    # Setup tone detection
     d_t = ToneDetector(
         tones, 
         min_tone_amp=args.min_tone_level, 
@@ -102,26 +87,31 @@ def main():
         min_pause=args.min_tone_off
     )
 
+    # Setup sequence detection
     d_s = ToneSequenceDetector(
         max_tone_interval=args.max_tone_interval, 
         min_sequence_length=args.min_seq_length
     )
 
-    data_gen = itertools.chain(data_source.generate_parts(), silence_source.generate_parts())
-    
-    periodic_status()
+    # Pretty printing of status
+    status = Status()
+    printer = StatusPrinter(status)
+    printer.start_periodic_print(refresh_interval=10)
+
     for chunk in data_gen:
         for w in wnd.update(chunk):
+            # For each full window first query the frequency detection module
             cur_freqs = d_f.update(w) 
+            # Given the frequencies report all tones currently present
             cur_tones = d_t.update(w, cur_freqs)
+            # Accumulate tones in sequences
             seq, start, stop = d_s.update(w, cur_tones)
 
             if len(seq) > 0:
                 logger.info(">>> {} around {:.2f}-{:.2f}".format("".join([str(e) for e in seq]), start, stop))
-                status['sequences'].append(seq)
-    
-        status['update'] = datetime.now()
-        status['bytes'] = data_source.bytes_processed
+                status.update_sequences(seq)
+
+        status.update_bytes(data_source.bytes_processed)
     
 
 if __name__ == "__main__":
