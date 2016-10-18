@@ -4,8 +4,10 @@ import argparse
 import logging
 import sys
 import itertools
+from os import path
 
 from examples.status import StatusPrinter, Status
+from examples.buffer import AudioBuffer, NoopAudioBuffer
 from tonedetect import helpers
 from tonedetect.tones import Tones
 from tonedetect.sources import FFMPEGSource, STDINSource, SilenceSource
@@ -26,6 +28,9 @@ def parse_args():
         parser.add_argument("--min-tone-off", type=float, help="Minimum time non-active time for a tone before detection stops in seconds", default=0.04)
         parser.add_argument("--max-tone-interval", type=float, help="Maximum time between two tones so that both tones belong to same sequence in seconds", default=1)
         parser.add_argument("--min-seq-length", type=int, help="Minimum length or tone sequences to be recognized", default=2)
+        parser.add_argument("--capture-audio", help="When a sequence is detected and this switch is enabled, recently captured audio samples are written to disk", action="store_true")
+        parser.add_argument("--capture-audio-dir", help="Specifies the directory to write audio captures to",  default=".")
+        parser.add_argument("--capture-audio-length", help="Capture audio buffer size in seconds",  default=10)
 
     parser = argparse.ArgumentParser(prog="tone_collect")
     subparsers = parser.add_subparsers(help="sub-command help", dest="subparser_name")
@@ -98,7 +103,17 @@ def main():
     printer = StatusPrinter(status)
     printer.start_periodic_print(refresh_interval=10)
 
+    # Handle audio samples that will be written to disk when a detection occurs.
+    audio_buffer = None
+    if args.capture_audio:
+        audio_buffer = AudioBuffer(args.sample_rate, args.capture_audio_length)
+        assert path.isdir(args.capture_audio_dir), "Audio capture directory does not exist"
+    else:
+        audio_buffer = NoopAudioBuffer()
+
     for chunk in data_gen:
+        audio_buffer.add(chunk)
+
         for w in wnd.update(chunk):
             # For each full window first query the frequency detection module
             cur_freqs = d_f.update(w) 
@@ -108,9 +123,11 @@ def main():
             seq, start, stop = d_s.update(w, cur_tones)
 
             if len(seq) > 0:
-                logger.info(">>> {} around {:.2f}-{:.2f}".format("".join([str(e) for e in seq]), start, stop))
                 status.update_sequences(seq)
-
+                id = "{:03d}".format(len(status.sequences))
+                logger.info(">>> '{}' around {:.2f}s-{:.2f}s assigned #{}".format("".join([str(e) for e in seq]), start, stop, id))                
+                audio_buffer.write_audio(args.capture_audio_dir, id)
+    
         status.update_bytes(data_source.bytes_processed)
     
 
