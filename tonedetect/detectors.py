@@ -3,6 +3,7 @@ import numpy as np
 from sys import float_info
 
 class FrequencyDetector(object):
+    """Compute the discrete Fourier transform of a discrete time signal and return the amplitudes of specific frequencies."""
 
     def __init__(self, freqs):
         self.frequencies = np.atleast_1d(freqs)
