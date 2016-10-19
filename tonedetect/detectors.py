@@ -3,7 +3,6 @@ import numpy as np
 from sys import float_info
 
 class FrequencyDetector(object):
-    """ Detect frequencies in sampled signals."""
 
     def __init__(self, freqs):
         self.frequencies = np.atleast_1d(freqs)
@@ -19,9 +18,11 @@ class FrequencyDetector(object):
         return self.fft_values
 
     def f2b(self, fres, f):
+        """Return floating point bin number for frequency."""
         return f / fres
 
     def update(self, wnd):
+        """Update frequencies from values given in window."""
         y = self.fft(wnd)
         amp = lambda f: y[int(round(self.f2b(wnd.fft_resolution, f)))]
         amps = [amp(fb) for fb in self.frequencies]
