@@ -1,7 +1,6 @@
 
 
 from tonedetect import generators
-from tonedetect import debug
 import numpy as np
 
 def test_generate_time_samples():

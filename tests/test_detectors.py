@@ -1,6 +1,5 @@
 from tonedetect import generators
 from tonedetect import window
-from tonedetect import debug
 from tonedetect import detectors
 import numpy as np
 

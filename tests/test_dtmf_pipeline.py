@@ -5,7 +5,6 @@ import numpy as np
 from tonedetect.tones import Tones
 from tonedetect.window import Window
 from tonedetect import helpers
-from tonedetect import debug
 from tonedetect import sources
 from tonedetect import detectors
 
