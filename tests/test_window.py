@@ -12,9 +12,9 @@ def test_window_properties():
     assert w.ntotal == 110
     assert w.frequency_resolution == sf / n
     assert w.fft_resolution == sf / 110
-    assert w.shifts == 0
+    assert w._shifts == 0
     assert w.sample_rate == sf
-    assert w.idx == 0
+    assert w._idx == 0
     assert w.npads == p
     assert w.nsamples == n
     assert w.temporal_resolution == n / sf

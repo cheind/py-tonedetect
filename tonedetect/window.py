@@ -27,25 +27,72 @@ class Window:
         self.temporal_resolution = self.nsamples / self.sample_rate
         self.frequency_resolution = self.sample_rate / self.nsamples
         self.fft_resolution = self.sample_rate / self.ntotal
-        self.values = np.zeros(self.ntotal, dtype)
-        self.sample_values = self.values[:self.nsamples]
+        
+        self._values = np.zeros(self.ntotal, dtype)
+        self._shifts = 0
+        self._idx = 0
+        self._nsamples_half = int(nsamples / 2)
+        self._half_temp_res = self.temporal_resolution / 2
 
-        self.shifts = 0
-        self.idx = 0
-        self.nsamples_half = int(nsamples / 2)
-
-        self.wndfnc = {
+        self._wndfnc = {
             Window.Type.rectangle: lambda: np.full(nsamples, 1, dtype=dtype),
             Window.Type.hanning: lambda: np.hanning(nsamples)
         }[wndtype]()
 
-        self.wndfnc_norm = 1. / np.average(self.wndfnc)
-        self.wndfnc = np.append(self.wndfnc, np.zeros(npads))
+        self._wndfnc_norm = 1. / np.average(self._wndfnc)
+        self._wndfnc = np.append(self._wndfnc, np.zeros(npads))
 
     @property
     def window_function(self):
-        return self.wndfnc, self.wndfnc_norm
-        
+        return self._wndfnc, self._wndfnc_norm
+
+    @property
+    def values(self):
+        return self._values
+
+    @property
+    def samples(self):
+        return self._values[:self.nsamples]
+
+    @property
+    def temporal_center(self):
+        """ Returns the position of the window in the data stream.
+            Position is specified as window's center position.
+        """
+        return self._half_temp_res + self._shifts * self._half_temp_res
+
+    @property
+    def temporal_range(self):
+        """Returns the temporal span of this window in terms of two timepoints."""
+        pos = self.temporal_center
+        return [pos - self._half_temp_res, pos + self._half_temp_res]
+            
+    def update(self, data):
+        if isinstance(data, (list, tuple, np.ndarray)):
+            yield from self.update_with_samples(data)
+        else:
+            for part in data:
+                yield from self.update(part)
+
+    def update_with_samples(self, samples):
+        """ Update by adding new samples. Invokes callback for every full window encountered. """
+        nsamples_input = len(samples)
+        idx_input = 0
+        while nsamples_input > 0:
+            nleft = self.nsamples - self._idx
+            nconsume = min(nleft, nsamples_input)
+            self._values[self._idx : self._idx + nconsume] = samples[idx_input : idx_input + nconsume]
+            
+            self._idx += nconsume
+            idx_input += nconsume
+            nsamples_input -= nconsume
+
+            if self._idx == self.nsamples:
+                # Invoke callback and shift window
+                yield self
+                self._values[:self._nsamples_half] = self._values[self._nsamples_half : self.nsamples]
+                self._idx = self._nsamples_half
+                self._shifts += 1
         
     @staticmethod
     def tuned(sample_rate, freqs, min_fres=None, power_of_2=False, use_padding=True, wndtype=Type.rectangle, dtype=np.float_):
@@ -84,45 +131,3 @@ class Window:
 
         logger.info("Window tuned. Length {} ({} data, {} padding). Capture time of {:.5f}s".format(ntotal, nsamples, npad, nsamples / sample_rate))                   
         return Window(nsamples, sample_rate, npads=npad, wndtype=Window.Type.rectangle, dtype=dtype)
-
-
-    def update(self, data):
-        if isinstance(data, (list, tuple, np.ndarray)):
-            yield from self.update_with_samples(data)
-        else:
-            for part in data:
-                yield from self.update(part)
-
-    def update_with_samples(self, samples):
-        """ Update by adding new samples. Invokes callback for every full window encountered. """
-        nsamples = len(samples)
-        idx = 0
-        while nsamples > 0:
-            nleft = self.nsamples - self.idx
-            nconsume = min(nleft, nsamples)
-            self.values[self.idx : self.idx + nconsume] = samples[idx : idx + nconsume]
-            self.idx += nconsume
-            idx += nconsume
-            nsamples -= nconsume
-            if self.idx == self.nsamples:
-                # Invoke callback and shift window
-                yield self
-                self.values[:self.nsamples_half] = self.values[self.nsamples_half:self.nsamples]
-                self.idx = self.nsamples_half
-                self.shifts += 1
-
-    @property
-    def temporal_center(self):
-        """ Returns the position of the window in the data stream.
-            Position is specified as window's center position.
-        """
-        half_res = self.temporal_resolution / 2
-        return half_res + self.shifts * half_res
-
-    @property
-    def temporal_range(self):
-        """Returns the temporal span of this window in terms of two timepoints."""
-        pos = self.temporal_center
-        half_res = self.temporal_resolution / 2
-        return [pos - half_res, pos + half_res]
-        

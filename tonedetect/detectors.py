@@ -10,16 +10,17 @@ class FrequencyDetector(object):
         self.fft_values = None
 
     def fft(self, wnd):
+        data = wnd.values
         f, wndnorm = wnd.window_function
 
-        norm = (2 / wnd.ntotal) * wndnorm
+        norm = (2 / len(data)) * wndnorm
 
         # Using real variant of the DFT as our input signal is purely real. 
         # The rfft method only computes the first half of the frequency spectrum (up to Nyquist frequency)
         # as by definition the second half will be a mirrored version of the first half for real valued signals,
         # expecting a runtime improvement by a factor of 2.
         
-        self.fft_values = norm * np.abs(np.fft.rfft(f * wnd.values))
+        self.fft_values = norm * np.abs(np.fft.rfft(f * data))
         return self.fft_values
 
     def f2b(self, fres, f):
