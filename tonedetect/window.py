@@ -9,24 +9,63 @@ from sys import float_info
 logger = logging.getLogger(__name__)
 
 class Window:
-    """A window capturing discrete parts of a time domain signal."""
+    """A window capturing discrete parts of a time domain signal.
+
+    Each window holds list of data samples and additional zero samples for padding.
+    Once enough samples have been provided, the window will yield itself allowing for 
+    any postprocessing on the current values before the window will shift by an amount
+    corresponding to 50 percent overlap.
+
+    Windows additionally hold a window function that can be used reduce the effects of
+    truncated time signals when applying the FFT.
+
+    Args: 
+        nsamples (int): Number of data samples. Even numbers required
+        sample_rate (float): Number of samples per second (Hz)
+
+    Kwargs:
+        npads (int): Number of zero paddings
+        wndtype (Window.Type): Type of window function to provide
+        dtype: Data type of sample values
+
+    """
 
     class Type(Enum):
-        """Types of available window functions."""
-        rectangle = 0
-        hanning = 1 
+        """Types of available window functions.
+
+        See https://en.wikipedia.org/wiki/Window_function for an overview.
+        """
+
+        rectangle = 0 
+        """Box-like window shape."""
+        
+        hanning = 1   
+        """Von Hanning window shape."""
 
     def __init__(self, nsamples, sample_rate, npads=0, wndtype=Type.rectangle, dtype=np.float_):        
-        self.nsamples = int(nsamples)
-        self.npads = int(npads)
-        self.ntotal = nsamples + npads
-
-        assert self.nsamples % 2 == 0, "Even window size expected"
         
+        assert nsamples % 2 == 0, "Even window size expected"
+
+        self.nsamples = int(nsamples)
+        """Number of data samples."""
+        
+        self.npads = int(npads)
+        """Number of zero padding elements."""
+
+        self.ntotal = nsamples + npads
+        """Total number of elements."""
+
         self.sample_rate = sample_rate
+        """Sample rate in Hz."""
+
         self.temporal_resolution = self.nsamples / self.sample_rate
+        """Temporal span of window in seconds."""
+
         self.frequency_resolution = self.sample_rate / self.nsamples
+        """Frequency resolution in Hz without data paddding."""
+
         self.fft_resolution = self.sample_rate / self.ntotal
+        """Frequency resolution in Hz including data padding."""
         
         self._values = np.zeros(self.ntotal, dtype)
         self._shifts = 0
@@ -44,30 +83,46 @@ class Window:
 
     @property
     def window_function(self):
+        """Returns the window function values and the data normalizer.
+
+        Note:
+            Although the length of the window function corresponds to the total number of data elements
+            (including padding), the number of elements used to compute the window function is nsamples.
+            Similar things hold for the normalizer.
+        """
         return self._wndfnc, self._wndfnc_norm
 
     @property
     def values(self):
+        """Returns the list of data elements including zero padding elements."""
         return self._values
 
     @property
     def samples(self):
+        """Returns the list of data elements excluding zero padding elements."""
         return self._values[:self.nsamples]
 
     @property
     def temporal_center(self):
-        """ Returns the position of the window in the data stream.
-            Position is specified as window's center position.
-        """
+        """ Returns the center position of the window in seconds."""
         return self._half_temp_res + self._shifts * self._half_temp_res
 
     @property
     def temporal_range(self):
-        """Returns the temporal span of this window in terms of two timepoints."""
+        """Returns the temporal span of this window in terms of two timepoints.
+
+        Returns:
+            Array of start and end timepoints measured in seconds. Start is inclusive, end is exclusive.
+        """
         pos = self.temporal_center
         return [pos - self._half_temp_res, pos + self._half_temp_res]
             
     def update(self, data):
+        """Update with samples.
+
+        Args:
+            data (list, generator): Data is either an array of samples or a generator function that returns one.
+        """
         if isinstance(data, (list, tuple, np.ndarray)):
             yield from self.update_with_samples(data)
         else:
@@ -75,7 +130,12 @@ class Window:
                 yield from self.update(part)
 
     def update_with_samples(self, samples):
-        """ Update by adding new samples. Invokes callback for every full window encountered. """
+        """ Update by adding new samples and yield for every full window.
+
+        Yields:
+            self: The next full Window.
+
+        """
         nsamples_input = len(samples)
         idx_input = 0
         while nsamples_input > 0:
@@ -96,7 +156,21 @@ class Window:
         
     @staticmethod
     def tuned(sample_rate, freqs, min_fres=None, power_of_2=False, use_padding=True, wndtype=Type.rectangle, dtype=np.float_):
-        """ Return a window that is tuned for the given parameters. """        
+        """ Tunes a window settings for the given parameters.
+
+        Args:
+            sample_rate (float): Sample rate of signal in Hz
+            freqs (list): List of target frequencies in Hz.
+        
+        Kwargs:
+            min_fres (float): When given the minimum frequency resolution between two frequency bins only considering data samples.
+                              When not specified, it is automatically calculated as the minimum frequency step / 2 from target frequencies
+            power_of_2 (bool): Whether or not the size of the returned window should be a power of 2. 
+            use_padding (bool): Whether or not to use zero padding (true) or data samples (false) to fill up to the next power of 2.
+            wndtype (Window.Type): Which type of window function to use.
+            dtype (Window.Type): Data type of data samples.
+        """
+
         freqs = np.atleast_1d(freqs)        
         high_f = np.max(freqs)
         assert (sample_rate / 2) >= high_f, "Highest target frequency violates Nyquist sampling theorem."
