@@ -78,7 +78,7 @@ def main():
     data_gen = itertools.chain(data_source.generate_parts(), silence_source.generate_parts())
 
     # Setup overlapping data window
-    wnd = Window.tuned(args.sample_rate, freqs, power_of_2=True)
+    wnd = Window.tuned(args.sample_rate, freqs, power_of_2=True, wndtype=Window.Type.hanning)
     
     # Setup frequency detection for target frequencies
     d_f = FrequencyDetector(freqs)

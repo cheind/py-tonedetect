@@ -12,7 +12,7 @@ def write_audio(filename, sample_rate, data):
     scaled = np.int16(data/np.max(np.abs(data)) * 32767)
     scipy.io.wavfile.write(filename, sample_rate, scaled)
 
-def normalize_audio_by_bit_depth(data, dtype='float64'):
+def normalize_audio_by_bit_depth(data, dtype=np.float_):
     """Convert integral signal to [-1., 1.] using bit depth range of input type."""
 
     data = np.asarray(data)
@@ -28,7 +28,7 @@ def normalize_audio_by_bit_depth(data, dtype='float64'):
     offset = i.min + absolute_max
     return (data.astype(dtype) - offset) / absolute_max
 
-def normalize_audio_by_value_range(data, dtype='float64'):
+def normalize_audio_by_value_range(data, dtype=np.float_):
     """Convert integral or floating point signal to floating point with a range from -1 to 1."""
 
     data = np.asarray(data)

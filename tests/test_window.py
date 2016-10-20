@@ -8,7 +8,7 @@ def test_window_properties():
     n = 100
     p = 10
 
-    w = window.Window(n, p, sf)
+    w = window.Window(n, sf, npads=p)
     assert w.ntotal == 110
     assert w.frequency_resolution == sf / n
     assert w.fft_resolution == sf / 110
@@ -26,7 +26,7 @@ def test_window_shifts_correctly():
     n = 4
 
     data = np.arange(0, 100, 1)    
-    w = window.Window(n, 0, sf)
+    w = window.Window(n, sf, npads=0)
     
     gen = w.update(data)
     w = next(gen)
@@ -39,7 +39,7 @@ def test_window_shifts_correctly():
 
 def test_window_yields_correctly():
     data = np.arange(0, 10, 1)    
-    w = window.Window(4, 2, 10)
+    w = window.Window(4, 10, npads=2)
 
     gen = w.update(data)
     np.testing.assert_allclose(next(gen).values, [0,1,2,3,0,0])

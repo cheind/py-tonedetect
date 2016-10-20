@@ -55,7 +55,7 @@ class SilenceSource(BaseSource):
         self.duration = duration
 
     def generate_parts(self):
-        zeros = np.zeros(int(self.duration * self.sample_rate)) 
+        zeros = np.zeros(int(self.duration * self.sample_rate), dtype=np.float_) 
         self.bytes_processed += zeros.nbytes
         yield zeros
 

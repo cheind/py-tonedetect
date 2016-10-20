@@ -8,46 +8,47 @@ from sys import float_info
 
 logger = logging.getLogger(__name__)
 
-class WindowingFunction:
-    """ Encapsulates a windowing function for a given window size."""
-    
-    class Type(Enum):
-        """ Types of available windowing functions """
-        rectangle = 0
-        hanning = 1
-
-    def __init__(self, n, npads, wndtype=Type.rectangle):
-        self.type = type
-
-        if wndtype == WindowingFunction.Type.rectangle:
-            self.values = np.full(n + npads, 1.)
-        elif wndtype == WindowingFunction.Type.hanning:
-            self.values = np.append(np.hanning(n), np.zeros(npads))
-
-        self.normalizer = 1. / np.average(self.values[:n])
-
 class Window:
+    """A window capturing discrete parts of a time domain signal."""
 
-    def __init__(self, nsamples, npads, sample_rate, wndfnc=None):        
+    class Type(Enum):
+        """Types of available window functions."""
+        rectangle = 0
+        hanning = 1 
+
+    def __init__(self, nsamples, sample_rate, npads=0, wndtype=Type.rectangle, dtype=np.float_):        
         self.nsamples = int(nsamples)
         self.npads = int(npads)
         self.ntotal = nsamples + npads
+
         assert self.nsamples % 2 == 0, "Even window size expected"
         
         self.sample_rate = sample_rate
         self.temporal_resolution = self.nsamples / self.sample_rate
         self.frequency_resolution = self.sample_rate / self.nsamples
         self.fft_resolution = self.sample_rate / self.ntotal
-        self.values = np.zeros(self.ntotal)
+        self.values = np.zeros(self.ntotal, dtype)
         self.sample_values = self.values[:self.nsamples]
 
         self.shifts = 0
         self.idx = 0
         self.nsamples_half = int(nsamples / 2)
-        self.windowing_function = WindowingFunction(self.nsamples, self.npads) if wndfnc is None else wndfnc
+
+        self.wndfnc = {
+            Window.Type.rectangle: lambda: np.full(nsamples, 1, dtype=dtype),
+            Window.Type.hanning: lambda: np.hanning(nsamples)
+        }[wndtype]()
+
+        self.wndfnc_norm = 1. / np.average(self.wndfnc)
+        self.wndfnc = np.append(self.wndfnc, np.zeros(npads))
+
+    @property
+    def window_function(self):
+        return self.wndfnc, self.wndfnc_norm
+        
         
     @staticmethod
-    def tuned(sample_rate, freqs, min_fres=None, power_of_2=False, use_padding=True):
+    def tuned(sample_rate, freqs, min_fres=None, power_of_2=False, use_padding=True, wndtype=Type.rectangle, dtype=np.float_):
         """ Return a window that is tuned for the given parameters. """        
         freqs = np.atleast_1d(freqs)        
         high_f = np.max(freqs)
@@ -82,7 +83,7 @@ class Window:
             nsamples = ntotal
 
         logger.info("Window tuned. Length {} ({} data, {} padding). Capture time of {:.5f}s".format(ntotal, nsamples, npad, nsamples / sample_rate))                   
-        return Window(nsamples, npad, sample_rate)
+        return Window(nsamples, sample_rate, npads=npad, wndtype=Window.Type.rectangle, dtype=dtype)
 
 
     def update(self, data):

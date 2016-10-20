@@ -1,5 +1,7 @@
 from tonedetect import generators
-from tonedetect import window
+
+from tonedetect.window import Window
+from tonedetect.detectors import FrequencyDetector
 from tonedetect import detectors
 import numpy as np
 
@@ -11,8 +13,8 @@ def test_frequency_detector_rectangle():
     amps = [0.5, 1., 2.]
     s = generators.generate_signal(sf, 1, freqs, amps)
 
-    wnd = window.Window(1000, 0, sf, window.WindowingFunction(1000, 0))
-    fd = detectors.FrequencyDetector(freqs[0:2])
+    wnd = Window(1000, sf)
+    fd = FrequencyDetector(freqs[0:2])
     
     w = next(wnd.update(s))
     result = fd.update(w)
@@ -25,8 +27,8 @@ def test_frequency_detector_hanning():
     amps = [0.5, 1., 2.]
     s = generators.generate_signal(sf, 1, freqs, amps)
 
-    wnd = window.Window(1000, 0, sf, window.WindowingFunction(1000, 0, wndtype=window.WindowingFunction.Type.hanning))
-    fd = detectors.FrequencyDetector(freqs)
+    wnd = Window(1000, sf, wndtype=Window.Type.hanning)
+    fd = FrequencyDetector(freqs)
     
     w = next(wnd.update(s))
     result = fd.update(w)

@@ -10,5 +10,5 @@ def test_bit_depth_range_normalization():
     np.testing.assert_allclose(d, [-1, 0, 1], atol=0.01)
 
 def test_value_range_normalization():
-    d = helpers.normalize_audio_by_value_range(np.asarray([0, 1000], dtype='float32'))
+    d = helpers.normalize_audio_by_value_range(np.asarray([0, 1000], dtype=np.float_))
     np.testing.assert_allclose(d, [-1, 1], atol=0.01)

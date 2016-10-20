@@ -15,7 +15,7 @@ DTMF_TONES = Tones.from_json_file(os.path.join(PROJ_PATH, "etc", "dtmf.json"))
 def run(sample_rate, data, expected_string, min_expected_detections):
     freqs = DTMF_TONES.all_tone_frequencies()
 
-    wnd = Window.tuned(sample_rate, freqs, power_of_2=True)
+    wnd = Window.tuned(sample_rate, freqs, power_of_2=True, wndtype=Window.Type.hanning)
 
     d_f = detectors.FrequencyDetector(freqs)
     d_t = detectors.ToneDetector(DTMF_TONES, min_tone_amp=0.1, max_inter_tone_amp=0.1, min_presence=0.04, min_pause=0.04)

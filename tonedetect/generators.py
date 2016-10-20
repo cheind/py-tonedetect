@@ -1,7 +1,7 @@
 
 import numpy as np
 
-def generate_time_samples(sample_rate, duration, start=0, dtype=None):
+def generate_time_samples(sample_rate, duration, start=0, dtype=np.float_):
     """ Returns time samples for a given duration and sample rate """
     return np.arange(start, start + duration, 1 / sample_rate, dtype)
 
