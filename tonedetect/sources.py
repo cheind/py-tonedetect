@@ -1,11 +1,15 @@
 
 import subprocess as sp
 import numpy as np
+import logging
 from tonedetect import helpers
 from sys import stdin, getsizeof
+from urllib.parse import urlparse
 
 import shutil
 import os
+
+logger = logging.getLogger(__name__)
 
 class BaseSource(object):
     def __init__(self, sample_rate):
@@ -14,7 +18,7 @@ class BaseSource(object):
 
 class FFMPEGSource(BaseSource):  # pylint: disable=too-few-public-methods
 
-    def __init__(self, source, ffmpeg_binary="ffmpeg", sample_rate=44100, chunk_size=1024):
+    def __init__(self, source, ffmpeg_binary="ffmpeg", sample_rate=44100, chunk_size=1024, reconnect=None):
         super().__init__(sample_rate)
 
         self.ffmpeg = ffmpeg_binary
@@ -26,14 +30,22 @@ class FFMPEGSource(BaseSource):  # pylint: disable=too-few-public-methods
         self.chunk_size = chunk_size
         self.command = [
             self.ffmpeg,
-            '-i', source,
-            '-loglevel', 'error',
-            '-f', 's16le',
-            '-acodec', 'pcm_s16le',
-            '-ar', str(sample_rate),
-            '-ac', '1',
-            '-'
+            "-i", source,
+            "-loglevel", "error",
+            "-f", "s16le",
+            "-acodec", "pcm_s16le",
+            "-ar", str(sample_rate),
+            "-ac", "1"
         ]
+
+        url = urlparse(source)
+        if reconnect or url.scheme == "http" or url.scheme == "https":
+            logger.info("Enabling stream reconnection")
+            self.command.extend([
+                "-reconnect", "1",
+            ])
+
+        self.command.append('-')
 
     def generate_parts(self):
         
