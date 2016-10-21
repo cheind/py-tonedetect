@@ -1,4 +1,5 @@
 __*/
 .*/
+docs/build
 !/.gitignore
 !/*__init__.py
