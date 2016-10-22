@@ -76,14 +76,13 @@ class ToneDetector:
         pass     
 
     def __init__(self, tones, min_tone_amp=0.1, max_inter_tone_amp=0.1, min_presence=0.070, min_pause=0.070):
-        self.tones = tones.items
         self.freqs = tones.all_tone_frequencies()
         self.min_presence = min_presence
         self.min_pause = min_pause
         self.min_tone_amp = min_tone_amp
         self.max_inter_tone_amp = max_inter_tone_amp
         self.tone_data = []
-        for e in self.tones:
+        for e in tones.items:
             t = ToneDetector.ToneData()
             # The ids of frequencies that need to be present in window
             t.ids = [self.freqs.index(f) for f in e['f']]
@@ -93,26 +92,27 @@ class ToneDetector:
             t.off = TimepointAccumulator()
             # Whether or not the tone still present has already been reported before.
             t.reported = False
+            # Symbol to be reported
+            t.sym = e['sym']
             self.tone_data.append(t)
 
     def update(self, wnd, amps):
         """ Returns the list of active tones given the state of frequencies currently present in signal."""        
         tpoints = wnd.temporal_range
         new_tones = []
-        for i in range(len(self.tones)):
-            d = self.tone_data[i]
+        for d in self.tone_data:
             
             tone_amps = [amps[id] for id in d.ids]
             tone_amp_active = [a >= self.min_tone_amp for a in tone_amps]
             tone_amp_range = abs(np.max(tone_amps) - np.min(tone_amps))
-            
+
             if np.all(tone_amp_active) and tone_amp_range <= self.max_inter_tone_amp:
                 #print("{} - {}".format([amps[id] for id in data['ids']], self.tones[i]['sym']))
                 # All required frequencies for this tone are present
                 d.on.union(tpoints)
                 if d.on.timespan >= self.min_presence and not d.reported:
                     # Even if tone stays active, won't be reported again before at least min_pause time has passed.
-                    new_tones.append(self.tones[i]['sym'])
+                    new_tones.append(d.sym)
                     d.reported = True
                     d.off.reset()
             else:
