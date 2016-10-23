@@ -5,6 +5,7 @@ import itertools
 import logging
 from enum import Enum
 from sys import float_info
+from tonedetect.timespan import Timespan
 
 logger = logging.getLogger(__name__)
 
@@ -103,19 +104,10 @@ class Window:
         return self._values[:self.nsamples]
 
     @property
-    def temporal_center(self):
-        """ Returns the center position of the window in seconds."""
-        return self._half_temp_res + self._shifts * self._half_temp_res
-
-    @property
-    def temporal_range(self):
-        """Returns the temporal span of this window in terms of two timepoints.
-
-        Returns:
-            Array of start and end timepoints measured in seconds. Start is inclusive, end is exclusive.
-        """
-        pos = self.temporal_center
-        return [pos - self._half_temp_res, pos + self._half_temp_res]
+    def timespan(self):
+        """Returns the timespan this window covers."""
+        center = self._half_temp_res + self._shifts * self._half_temp_res
+        return Timespan(start=center - self._half_temp_res, end=center + self._half_temp_res)
             
     def update(self, data):
         """Update with samples.

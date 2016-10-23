@@ -30,9 +30,9 @@ def run(sample_rate, data, expected_string, min_expected_detections):
     for full_window in gen_windows:
         cur_f = d_f.update(full_window) 
         cur_t = d_t.update(full_window, cur_f)
-        cur_s, start, stop = d_s.update(full_window, cur_t)
+        cur_s, cur_tspan = d_s.update(full_window, cur_t)
 
-        if len(cur_s) > 0:
+        if cur_s:
             num_detections += 1
             detect_str = "".join([str(e) for e in cur_s])
             compare_str = expected_left[:len(detect_str)]

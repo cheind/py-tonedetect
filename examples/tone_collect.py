@@ -120,12 +120,12 @@ def main():
             # Given the frequencies report all tones currently present
             cur_tones = d_t.update(w, cur_freqs)
             # Accumulate tones in sequences
-            seq, start, stop = d_s.update(w, cur_tones)
+            seq, tspan = d_s.update(w, cur_tones)
 
-            if len(seq) > 0:
+            if seq:
                 status.update_sequences(seq)
                 id = "{:03d}".format(len(status.sequences))
-                logger.info(">>> '{}' around {:.2f}s-{:.2f}s assigned #{}".format("".join([str(e) for e in seq]), start, stop, id))                
+                logger.info(">>> '{}' around {:.2f}s-{:.2f}s assigned #{}".format("".join([str(e) for e in seq]), tspan.start, tspan.end, id))                
                 audio_buffer.write_audio(args.capture_audio_dir, id)
     
         status.update_bytes(data_source.bytes_processed)
