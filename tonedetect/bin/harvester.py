@@ -1,4 +1,4 @@
-
+#!/usr/bin/env python
 
 import argparse
 import logging
@@ -6,21 +6,17 @@ import sys
 import itertools
 from os import path
 
-from examples.status import StatusPrinter, Status
-from examples.buffer import AudioBuffer, NoopAudioBuffer
-from tonedetect import helpers
-from tonedetect.tones import Tones
-from tonedetect.sources import FFMPEGSource, STDINSource, SilenceSource
-from tonedetect.window import Window
-from tonedetect.detectors import FrequencyDetector, ToneDetector, ToneSequenceDetector
+import tonedetect as td
+from tonedetect.bin.status import StatusPrinter, Status
+from tonedetect.bin.buffer import AudioBuffer, NoopAudioBuffer
 
-logging.basicConfig(format="%(asctime)s %(message)s", datefmt="%m/%d/%Y %I:%M:%S", level=logging.INFO)
-logger = logging.getLogger(__name__)
+SCRIPT_DIR = path.dirname(path.realpath(__file__))
+LOGGER = logging.getLogger(__name__)
 
 def parse_args():
 
     def add_common_args(parser):
-        parser.add_argument("--tones", help="Json file containing the tone description.", required=True)
+        parser.add_argument("--tones", help="Json file containing the tone description.", default=path.join(SCRIPT_DIR, "dtmf.json"))
         parser.add_argument("--sample-rate", type=int, help="Sample rate of input audio in Hertz", default=44100)
         parser.add_argument("--min-tone-level", type=float, help="Minimum tone amplitude [0..1]", default=0.1)
         parser.add_argument("--max-tone-range", type=float, help="Maximum amplitude range between frequencies of a specific tone [0..1]", default=0.1)
@@ -32,15 +28,15 @@ def parse_args():
         parser.add_argument("--capture-audio-dir", help="Specifies the directory to write audio captures to",  default=".")
         parser.add_argument("--capture-audio-length", type=int, help="Capture audio buffer size in seconds",  default=10)
 
-    parser = argparse.ArgumentParser(prog="tone_collect")
+    parser = argparse.ArgumentParser(prog="harvester")
     subparsers = parser.add_subparsers(help="sub-command help", dest="subparser_name")
 
-    parser_ffmpeg = subparsers.add_parser("ffmpeg", help="Tone collecting from FFMPEG")
+    parser_ffmpeg = subparsers.add_parser("ffmpeg", help="Tone harvesting from FFMPEG")
     add_common_args(parser_ffmpeg)
     parser_ffmpeg.add_argument("--ffmpeg", help="Path to FFMPEG executable.", default="ffmpeg")
     parser_ffmpeg.add_argument("--source", help="The audio input. Can be a local file path or remote stream address.", required=True)
 
-    parser_stdin = subparsers.add_parser("stdin", help="Tone collecting from standard input")
+    parser_stdin = subparsers.add_parser("stdin", help="Tone harvesting from standard input")
     parser_stdin.add_argument("--source-type", help="How binary data from stdin is interpreted", default="int16")
     add_common_args(parser_stdin)  
 
@@ -53,38 +49,40 @@ def parse_args():
         
 
 def main():
+
+    logging.basicConfig(format="%(asctime)s %(message)s", datefmt="%m/%d/%Y %I:%M:%S", level=logging.INFO)
     
     args = parse_args()
 
     # Load tones description    
-    logger.info("Loading tone description from '{}'".format(args.tones))
-    tones = Tones.from_json_file(args.tones)
+    LOGGER.info("Loading tone description from '{}'".format(args.tones))
+    tones = td.Tones.from_json_file(args.tones)
     freqs = tones.all_tone_frequencies()
     
     # Setup input source
     data_source = None
     if args.subparser_name == "ffmpeg":
-        logger.info("Initializing FFMPEG source")
-        data_source = FFMPEGSource(args.source, ffmpeg_binary=args.ffmpeg, sample_rate=args.sample_rate)
+        LOGGER.info("Initializing FFMPEG source")
+        data_source = td.FFMPEGSource(args.source, ffmpeg_binary=args.ffmpeg, sample_rate=args.sample_rate)
     elif args.subparser_name == "stdin":
-        logger.info("Initializing STDIN source")
-        data_source = STDINSource(sample_rate=args.sample_rate, source_type=args.source_type)
+        LOGGER.info("Initializing STDIN source")
+        data_source = td.STDINSource(sample_rate=args.sample_rate, source_type=args.source_type)
 
     # Setup silence source. The silence source helps to flush detector states when the actual data stream becomes EOF.
     # This usually happens with file based data. Using the silence helps to detect sequences that aren't complete at EOF.
-    silence_source = SilenceSource(args.max_tone_interval*2, args.sample_rate)
+    silence_source = td.SilenceSource(args.max_tone_interval*2, args.sample_rate)
 
     # The data generator will be concatenation of data and silence. 
     data_gen = itertools.chain(data_source.generate_parts(), silence_source.generate_parts())
 
     # Setup overlapping data window
-    wnd = Window.tuned(args.sample_rate, freqs, power_of_2=True, wndtype=Window.Type.hanning)
+    wnd = td.Window.tuned(args.sample_rate, freqs, power_of_2=True, wndtype=td.Window.Type.hanning)
     
     # Setup frequency detection for target frequencies
-    d_f = FrequencyDetector(freqs)
+    d_f = td.FrequencyDetector(freqs)
     
     # Setup tone detection
-    d_t = ToneDetector(
+    d_t = td.ToneDetector(
         tones, 
         min_tone_amp=args.min_tone_level, 
         max_inter_tone_amp=args.max_tone_range, 
@@ -93,7 +91,7 @@ def main():
     )
 
     # Setup sequence detection
-    d_s = ToneSequenceDetector(
+    d_s = td.ToneSequenceDetector(
         max_tone_interval=args.max_tone_interval, 
         min_sequence_length=args.min_seq_length
     )
@@ -125,7 +123,7 @@ def main():
             if seq:
                 status.update_sequences(seq)
                 id = "{:03d}".format(len(status.sequences))
-                logger.info(">>> '{}' around {:.2f}s-{:.2f}s assigned #{}".format("".join([str(e) for e in seq]), tspan.start, tspan.end, id))                
+                LOGGER.info(">>> '{}' around {:.2f}s-{:.2f}s assigned #{}".format("".join([str(e) for e in seq]), tspan.start, tspan.end, id))                
                 audio_buffer.write_audio(args.capture_audio_dir, id)
     
         status.update_bytes(data_source.bytes_processed)

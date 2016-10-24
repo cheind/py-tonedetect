@@ -10,7 +10,7 @@ from tonedetect import detectors
 
 PROJ_PATH = os.path.abspath(os.path.join(os.path.dirname(os.path.realpath(__file__)), os.path.pardir))
 TEST_SAMPLE_DIR = os.path.join(PROJ_PATH, "etc", "samples", "dtmf_test")
-DTMF_TONES = Tones.from_json_file(os.path.join(PROJ_PATH, "etc", "dtmf.json"))
+DTMF_TONES = Tones.from_json_file(os.path.join(PROJ_PATH, "tonedetect", "bin", "dtmf.json"))
 
 def run(sample_rate, data, expected_string, min_expected_detections):
     freqs = DTMF_TONES.all_tone_frequencies()

@@ -2,7 +2,7 @@
 import logging
 import threading
 from datetime import datetime
-from tonedetect import helpers
+from tonedetect.bin import pretty
 
 class Status:
     def __init__(self):
@@ -29,9 +29,9 @@ class StatusPrinter:
             "Status {} sequences, running since: {}, last updated: {}, bytes processed: {}"
             .format(
                 len(self.status.sequences), 
-                helpers.pretty_date(self.status.since, suffix=""), 
-                helpers.pretty_date(self.status.last_update),
-                helpers.pretty_size(self.status.bytes_processed)
+                pretty.pretty_date(self.status.since, suffix=""), 
+                pretty.pretty_date(self.status.last_update),
+                pretty.pretty_size(self.status.bytes_processed)
             )
         )
         t = threading.Timer(refresh_interval, self.start_periodic_print)
