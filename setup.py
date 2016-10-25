@@ -5,6 +5,16 @@ from setuptools import setup
 with open("tonedetect/version.py") as f: 
     exec(f.read())
 
+
+install_requires = [
+    'numpy',
+    'scipy'
+]
+
+tests_requires = [
+    'pytest'
+]
+
 setup(name='tonedetect',
       version=__version__,
       description='Capture tone sequences from real-time audio streams in Python',
@@ -16,5 +26,6 @@ setup(name='tonedetect',
       include_package_data=True,
       zip_safe=False,
       setup_requires=['pytest-runner'],
-      tests_require=['pytest']
-      )
+      tests_require=tests_requires,
+      install_requires=install_requires
+)
