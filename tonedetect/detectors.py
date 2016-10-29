@@ -1,6 +1,7 @@
 
 import numpy as np
 from sys import float_info
+from tonedetect.timespan import Timespan
 
 class FrequencyDetector(object):
     """Compute the discrete Fourier transform of a discrete time signal and return the amplitudes of specific frequencies."""
@@ -33,44 +34,8 @@ class FrequencyDetector(object):
         amp = lambda f: y[int(round(self.f2b(wnd.fft_resolution, f)))]
         amps = [amp(fb) for fb in self.frequencies]
         return amps
-
-
-class TimepointAccumulator:
-    """ Time accumulator """
-    def __init__(self):
-        self.reset()
-
-    def copy(self):
-        acc = TimepointAccumulator()
-        acc.union([self.start, self.end])
-        return acc 
-
-    def reset(self):
-        self.start = float_info.max
-        self.end = -float_info.max
     
-    def union(self, timepoints):
-        self.start = min(self.start, timepoints[0])
-        self.end = max(self.end, timepoints[1])
-
-    @property
-    def empty(self):
-        return self.start is float_info.max
-
-    @property
-    def center(self):
-        return (self.start + self.end) * 0.5 if not self.empty else 0.
-
-    @property
-    def timespan(self):
-        return self.end - self.start if not self.empty else 0.   
-
-    @property
-    def range(self):
-        return [self.start, self.end]
-    
-class ToneDetector:
-    """ Detect the presence of multiple frequencies in sampled signals."""   
+class ToneDetector:  
 
     class ToneData:
         pass     
@@ -87,9 +52,9 @@ class ToneDetector:
             # The ids of frequencies that need to be present in window
             t.ids = [self.freqs.index(f) for f in e['f']]
             # Accumulator for active tone state
-            t.on = TimepointAccumulator()
+            t.on = Timespan()
             # Accumulator for muted tone state
-            t.off = TimepointAccumulator()
+            t.off = Timespan()
             # Whether or not the tone still present has already been reported before.
             t.reported = False
             # Symbol to be reported
@@ -98,7 +63,7 @@ class ToneDetector:
 
     def update(self, wnd, amps):
         """ Returns the list of active tones given the state of frequencies currently present in signal."""        
-        tpoints = wnd.temporal_range
+        tspan = wnd.timespan
         new_tones = []
         for d in self.tone_data:
             
@@ -109,8 +74,8 @@ class ToneDetector:
             if np.all(tone_amp_active) and tone_amp_range <= self.max_inter_tone_amp:
                 #print("{} - {}".format([amps[id] for id in data['ids']], self.tones[i]['sym']))
                 # All required frequencies for this tone are present
-                d.on.union(tpoints)
-                if d.on.timespan >= self.min_presence and not d.reported:
+                d.on.union(tspan)
+                if d.on.duration >= self.min_presence and not d.reported:
                     # Even if tone stays active, won't be reported again before at least min_pause time has passed.
                     new_tones.append(d.sym)
                     d.reported = True
@@ -118,8 +83,8 @@ class ToneDetector:
             else:
                 # At least one required frequency is not present
                 if d.reported:
-                    d.off.union(tpoints)
-                    if d.off.timespan >= self.min_pause:
+                    d.off.union(tspan)
+                    if d.off.duration >= self.min_pause:
                         d.reported = False
                         d.on.reset()
                 
@@ -129,31 +94,30 @@ class ToneSequenceDetector(object):
     def __init__(self, max_tone_interval=1., min_sequence_length=2):
         self.max_tone_interval = max_tone_interval
         self.min_sequence_length = min_sequence_length
-        self.last_tone = 0.
         self.sequence = []
-        self.acc = TimepointAccumulator()
+        self.acc = Timespan()
         
     def update(self, wnd, current_tones):
-        s = []
-        first, last = None, None
+        result_seq = None
+        result_tspan = None
 
-        pos = wnd.temporal_center
-        delta = pos - self.last_tone
+        tspan = wnd.timespan
+        delta = tspan.start - self.acc.end
         
         if delta > self.max_tone_interval:
             # No tones detected in max inter tone interval, report what we have.
             if len(self.sequence) >= self.min_sequence_length:
-                s.extend(self.sequence)
-                first, last = self.acc.range                            
+                result_seq = []
+                result_seq.extend(self.sequence)
+                result_tspan = self.acc.copy()                       
                 
             # In any case we need to clear sequences and reset accumulator.
             self.sequence.clear()
             self.acc.reset()
         
         if len(current_tones) > 0:
-            self.acc.union(wnd.temporal_range)
-            self.sequence.extend(current_tones)
-            self.last_tone = pos                        
+            self.acc.union(wnd.timespan)
+            self.sequence.extend(current_tones)                       
 
-        return s, first, last
+        return result_seq, result_tspan
     
