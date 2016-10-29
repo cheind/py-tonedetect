@@ -30,11 +30,13 @@ def test_window_shifts_correctly():
     
     gen = w.update(data)
     w = next(gen)
-    assert w.temporal_center == 0.2
-    assert w.temporal_range == [0., 0.4] 
+    tspan = w.timespan
+    np.testing.assert_allclose((0.2, 0.0, 0.4), (tspan.center, tspan.start, tspan.end))
+
     w = next(gen)
-    assert w.temporal_center == 0.4 
-    np.testing.assert_allclose(w.temporal_range, [0.2, 0.6]) 
+    tspan = w.timespan
+    np.testing.assert_allclose((0.4, 0.2, 0.6), (tspan.center, tspan.start, tspan.end))
+
 
 
 def test_window_yields_correctly():
